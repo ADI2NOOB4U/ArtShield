@@ -3,6 +3,7 @@ import { Contract, JsonRpcProvider, Wallet, isAddress } from "ethers";
 const OWNERSHIP_ABI = [
 	"function registerArtwork(bytes32,bytes32,uint256,address)",
 	"function transferArtwork(bytes32,address)",
+	"function transferArtwork(bytes32,address)",
 	"function artwork(bytes32) view returns (address creator,address currentOwner,bytes32 metadataHash,uint256 certificateTokenId,uint64 registeredAt,bool registered)",
 	"function provenance(bytes32) view returns (bytes32[])",
 ];
@@ -15,10 +16,12 @@ const RIGHTS_ABI = [
 
 export type RegisterArtworkRequest = { artworkFingerprint: string; metadataHash: string; certificateTokenId: string; creator: string };
 export type IssueRightsRequest = { artworkFingerprint: string; grantee: string; rightsMask: number; expiresAt?: number; metadataUri: string };
+export type TransferArtworkRequest = { artworkFingerprint: string; newOwner: string };
 export type BlockchainReceipt = { transactionHash: string; result?: string };
 
 export interface Phase2Client {
 	registerArtwork(request: { artworkHash: string; metadataHash: string; certificateTokenId: bigint; creator: string }): Promise<BlockchainReceipt>;
+	transferArtwork(request: { artworkHash: string; newOwner: string }): Promise<BlockchainReceipt>;
 	getArtwork(artworkHash: string): Promise<unknown>;
 	getProvenance(artworkHash: string): Promise<string[]>;
 	issueRights(request: { artworkHash: string; grantee: string; rightsMask: number; expiresAt: number; metadataUri: string }): Promise<BlockchainReceipt>;
@@ -62,6 +65,10 @@ export function validateRights(request: IssueRightsRequest) {
 	return { artworkHash, grantee, rightsMask: request.rightsMask, expiresAt, metadataUri: request.metadataUri };
 }
 
+export function validateTransfer(request: TransferArtworkRequest) {
+	return { artworkHash: validateArtworkFingerprint(request.artworkFingerprint), newOwner: address(request.newOwner, "newOwner") };
+}
+
 function receipt(transaction: any): BlockchainReceipt {
 	return transaction.wait().then((result: any) => {
 		if (!result?.hash) throw new Phase2BlockchainError("blockchain receipt was unavailable");
@@ -82,6 +89,7 @@ export function createConfiguredPhase2Client(): Phase2Client {
 	const rights = new Contract(rightsAddress, RIGHTS_ABI, signer);
 	return {
 		registerArtwork: async (request) => receipt(await ownership.registerArtwork(request.artworkHash, request.metadataHash, request.certificateTokenId, request.creator)),
+		transferArtwork: async (request) => receipt(await ownership.transferArtwork(request.artworkHash, request.newOwner)),
 		getArtwork: async (artworkHash) => ownership.artwork(artworkHash),
 		getProvenance: async (artworkHash) => ownership.provenance(artworkHash),
 		issueRights: async (request) => receipt(await rights.issueRights(request.artworkHash, request.grantee, request.rightsMask, request.expiresAt, request.metadataUri)),
@@ -96,6 +104,7 @@ export function resetPhase2ClientFactoryForTests() { clientFactory = createConfi
 export function getPhase2Client() { return clientFactory(); }
 
 export async function registerArtwork(request: RegisterArtworkRequest) { return getPhase2Client().registerArtwork(validateRegister(request)); }
+export async function transferArtwork(request: TransferArtworkRequest) { return getPhase2Client().transferArtwork(validateTransfer(request)); }
 export async function getArtwork(fingerprint: string) { return getPhase2Client().getArtwork(validateArtworkFingerprint(fingerprint)); }
 export async function getProvenance(fingerprint: string) { return getPhase2Client().getProvenance(validateArtworkFingerprint(fingerprint)); }
 export async function issueRights(request: IssueRightsRequest) { return getPhase2Client().issueRights(validateRights(request)); }

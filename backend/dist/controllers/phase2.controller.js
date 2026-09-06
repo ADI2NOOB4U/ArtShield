@@ -1,4 +1,4 @@
-import { getArtwork, getProvenance, issueRights, registerArtwork, revokeRights, verifyRights, Phase2BlockchainError, Phase2ConfigurationError, Phase2ValidationError, } from "../services/blockchain/phase2.service.js";
+import { getArtwork, getProvenance, issueRights, registerArtwork, transferArtwork, revokeRights, verifyRights, Phase2BlockchainError, Phase2ConfigurationError, Phase2ValidationError, } from "../services/blockchain/phase2.service.js";
 function handle(error, response) {
     if (error instanceof Phase2ValidationError) {
         response.status(422).json({ error: error.message });
@@ -33,6 +33,14 @@ export async function artwork(request, response) {
 export async function provenance(request, response) {
     try {
         response.json(await getProvenance(String(request.params.fingerprint)));
+    }
+    catch (error) {
+        handle(error, response);
+    }
+}
+export async function transfer(request, response) {
+    try {
+        response.json(await transferArtwork(request.body));
     }
     catch (error) {
         handle(error, response);

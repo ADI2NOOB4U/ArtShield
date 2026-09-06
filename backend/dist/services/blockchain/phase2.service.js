@@ -2,6 +2,7 @@ import { Contract, JsonRpcProvider, Wallet, isAddress } from "ethers";
 const OWNERSHIP_ABI = [
     "function registerArtwork(bytes32,bytes32,uint256,address)",
     "function transferArtwork(bytes32,address)",
+    "function transferArtwork(bytes32,address)",
     "function artwork(bytes32) view returns (address creator,address currentOwner,bytes32 metadataHash,uint256 certificateTokenId,uint64 registeredAt,bool registered)",
     "function provenance(bytes32) view returns (bytes32[])",
 ];
@@ -50,6 +51,9 @@ export function validateRights(request) {
         throw new Phase2ValidationError("metadataUri is required and bounded");
     return { artworkHash, grantee, rightsMask: request.rightsMask, expiresAt, metadataUri: request.metadataUri };
 }
+export function validateTransfer(request) {
+    return { artworkHash: validateArtworkFingerprint(request.artworkFingerprint), newOwner: address(request.newOwner, "newOwner") };
+}
 function receipt(transaction) {
     return transaction.wait().then((result) => {
         if (!result?.hash)
@@ -72,6 +76,7 @@ export function createConfiguredPhase2Client() {
     const rights = new Contract(rightsAddress, RIGHTS_ABI, signer);
     return {
         registerArtwork: async (request) => receipt(await ownership.registerArtwork(request.artworkHash, request.metadataHash, request.certificateTokenId, request.creator)),
+        transferArtwork: async (request) => receipt(await ownership.transferArtwork(request.artworkHash, request.newOwner)),
         getArtwork: async (artworkHash) => ownership.artwork(artworkHash),
         getProvenance: async (artworkHash) => ownership.provenance(artworkHash),
         issueRights: async (request) => receipt(await rights.issueRights(request.artworkHash, request.grantee, request.rightsMask, request.expiresAt, request.metadataUri)),
@@ -84,6 +89,7 @@ export function setPhase2ClientFactoryForTests(factory) { clientFactory = factor
 export function resetPhase2ClientFactoryForTests() { clientFactory = createConfiguredPhase2Client; }
 export function getPhase2Client() { return clientFactory(); }
 export async function registerArtwork(request) { return getPhase2Client().registerArtwork(validateRegister(request)); }
+export async function transferArtwork(request) { return getPhase2Client().transferArtwork(validateTransfer(request)); }
 export async function getArtwork(fingerprint) { return getPhase2Client().getArtwork(validateArtworkFingerprint(fingerprint)); }
 export async function getProvenance(fingerprint) { return getPhase2Client().getProvenance(validateArtworkFingerprint(fingerprint)); }
 export async function issueRights(request) { return getPhase2Client().issueRights(validateRights(request)); }

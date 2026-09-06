@@ -16,6 +16,14 @@ type VerificationResult = {
 	reasons: string[];
 };
 
+type CertificateResult = {
+	tokenId: string;
+	transactionHash: string;
+	contractAddress: string;
+	chainId: string;
+	metadataUri: string;
+};
+
 function fileAsBase64(file: File): Promise<string> {
 	return new Promise((resolve, reject) => {
 		const reader = new FileReader();
@@ -52,12 +60,14 @@ export default function App() {
 	const [lookupFingerprint, setLookupFingerprint] = useState("");
 	const [verification, setVerification] = useState<VerificationResult | null>(null);
 	const [artifactToVerify, setArtifactToVerify] = useState<File | null>(null);
+	const [certificate, setCertificate] = useState<CertificateResult | null>(null);
 
 	function onFileChange(event: ChangeEvent<HTMLInputElement>) {
 		setFile(event.target.files?.[0] ?? null);
 		setResult(null);
 		setVerification(null);
 		setArtifactToVerify(null);
+		setCertificate(null);
 		setError("");
 	}
 
@@ -141,6 +151,28 @@ export default function App() {
 		} catch (requestError) { setPhase2Message(requestError instanceof Error ? requestError.message : "Rights issuance failed"); }
 	}
 
+	async function createCertificate() {
+		if (!result?.fingerprint) {
+			setPhase2Message("Protect the artwork first to obtain its canonical fingerprint.");
+			return;
+		}
+		try {
+			const body = await phase2Request("/api/certificates", {
+				method: "POST",
+				body: JSON.stringify({
+					recipient: creator,
+					artworkFingerprint: result.fingerprint,
+					metadata: { title, artist, protectedArtifactHash: result.protected_artifact_hash },
+					metadataUri: "local://artshield-protected-artifact",
+				}),
+			});
+			setCertificate(body as CertificateResult);
+			setPhase2Message(`Certificate confirmed on chain: token ${body.tokenId}`);
+		} catch (requestError) {
+			setPhase2Message(requestError instanceof Error ? requestError.message : "Certificate issuance failed");
+		}
+	}
+
 	async function lookupProvenance() {
 		try {
 			const [artwork, history] = await Promise.all([
@@ -218,7 +250,9 @@ export default function App() {
 					<label>Creator wallet<input value={creator} onChange={(event) => setCreator(event.target.value)} placeholder="0x..." /></label>
 					<label>Metadata hash<input value={metadataHash} onChange={(event) => setMetadataHash(event.target.value)} placeholder="0x + 64 hex characters" /></label>
 					<label>Certificate token ID<input value={certificateTokenId} onChange={(event) => setCertificateTokenId(event.target.value)} /></label>
+										<button type="button" onClick={createCertificate}>Create certificate</button>
 					<button type="button" onClick={registerProvenance}>Register provenance</button>
+										{certificate && <dl><dt>Certificate token</dt><dd>{certificate.tokenId}</dd><dt>Transaction</dt><dd>{certificate.transactionHash}</dd><dt>Network</dt><dd>Chain {certificate.chainId}</dd><dt>Contract</dt><dd>{certificate.contractAddress}</dd></dl>}
 					<label>Lookup fingerprint<input value={lookupFingerprint} onChange={(event) => setLookupFingerprint(event.target.value)} placeholder="64 hex characters" /></label>
 					<button type="button" onClick={lookupProvenance}>Lookup ownership and provenance</button>
 					<p className="muted">The backend submits the transaction only when blockchain configuration and signer authorization are available.</p>

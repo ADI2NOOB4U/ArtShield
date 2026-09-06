@@ -5,6 +5,7 @@ import {
 	getProvenance,
 	issueRights,
 	registerArtwork,
+	transferArtwork,
 	revokeRights,
 	verifyRights,
 	Phase2BlockchainError,
@@ -27,6 +28,9 @@ export async function artwork(request: Request, response: Response): Promise<voi
 }
 export async function provenance(request: Request, response: Response): Promise<void> {
 	try { response.json(await getProvenance(String(request.params.fingerprint))); } catch (error) { handle(error, response); }
+}
+export async function transfer(request: Request, response: Response): Promise<void> {
+	try { response.json(await transferArtwork(request.body)); } catch (error) { handle(error, response); }
 }
 export async function rights(request: Request, response: Response): Promise<void> {
 	try { response.status(201).json(await issueRights(request.body)); } catch (error) { handle(error, response); }

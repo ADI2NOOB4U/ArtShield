@@ -12,6 +12,7 @@ const grantee = "0x0000000000000000000000000000000000000002";
 function fakeClient() {
   return {
     async registerArtwork() { return { transactionHash: "0xregister" }; },
+    async transferArtwork() { return { transactionHash: "0xtransfer" }; },
     async getArtwork() { return { currentOwner: creator }; },
     async getProvenance() { return [metadataHash]; },
     async issueRights() { return { transactionHash: "0xrights" }; },
@@ -51,5 +52,11 @@ describe("Phase 2 backend boundary", () => {
     assert.equal(rightsResponse.status, 422);
     const verifyResponse = await fetch(`${address}/api/rights/not-a-token/verify?rightsMask=4`);
     assert.equal(verifyResponse.status, 422);
+  });
+
+  it("supports ownership transfer through the backend boundary", async () => {
+    const response = await fetch(`${address}/api/artworks/transfer`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ artworkFingerprint: fingerprint, newOwner: grantee }) });
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).transactionHash, "0xtransfer");
   });
 });
