@@ -27,7 +27,7 @@ async function main() {
   };
   const directory = join(process.cwd(), "deployments");
   await mkdir(directory, { recursive: true });
-  await writeFile(join(directory, `${network.name}.json`), `${JSON.stringify(deployment, null, 2)}\n`, { encoding: "utf8", flag: "wx" });
+  await writeFile(join(directory, `${network.name}.json`), `${JSON.stringify(deployment, null, 2)}\n`, { encoding: "utf8" });
   console.log(JSON.stringify(deployment, null, 2));
 }
 

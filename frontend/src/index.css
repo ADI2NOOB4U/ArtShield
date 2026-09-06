@@ -25,6 +25,7 @@ dt { color: #597065; font-size: .75rem; font-weight: 700; text-transform: upperc
 dd { margin: 0 0 12px; overflow-wrap: anywhere; font-family: monospace; font-size: .82rem; }
 .muted { color: #597065; }
 .error { color: #8d2e24; font-weight: 700; }
+.download-success { color: #2e6d4f; font-weight: 700; }
 .verification { display: grid; gap: 5px; margin-top: 18px; padding: 12px; border-left: 4px solid #5c8778; background: #e4f1e8; }
 .verification span { font-size: .9rem; }
 .verification.tampered { border-color: #a44f2b; background: #f8e5d9; }

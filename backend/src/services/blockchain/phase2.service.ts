@@ -11,13 +11,14 @@ const RIGHTS_ABI = [
 	"function issueRights(bytes32,address,uint256,uint64,string) returns (uint256)",
 	"function revokeRights(uint256)",
 	"function verifyRights(uint256,uint256) view returns (bool)",
-	"function rights(uint256) view returns (bytes32 artworkHash,address issuer,address grantee,uint256 rightsMask,uint64 expiresAt,bool revoked)",
+	"function rights(uint256) view returns (bytes32 artworkHash,address issuer,address grantee,uint256 rightsMask,uint64 expiresAt,bool revoked,string metadataUri)",
+		"event RightsIssued(uint256 indexed tokenId,bytes32 indexed artworkHash,address indexed grantee,address issuer,uint256 rightsMask,uint64 expiresAt,string metadataUri)",
 ];
 
 export type RegisterArtworkRequest = { artworkFingerprint: string; metadataHash: string; certificateTokenId: string; creator: string };
 export type IssueRightsRequest = { artworkFingerprint: string; grantee: string; rightsMask: number; expiresAt?: number; metadataUri: string };
 export type TransferArtworkRequest = { artworkFingerprint: string; newOwner: string };
-export type BlockchainReceipt = { transactionHash: string; result?: string };
+export type BlockchainReceipt = { transactionHash: string; result?: string; tokenId?: string };
 
 export interface Phase2Client {
 	registerArtwork(request: { artworkHash: string; metadataHash: string; certificateTokenId: bigint; creator: string }): Promise<BlockchainReceipt>;
@@ -69,10 +70,11 @@ export function validateTransfer(request: TransferArtworkRequest) {
 	return { artworkHash: validateArtworkFingerprint(request.artworkFingerprint), newOwner: address(request.newOwner, "newOwner") };
 }
 
-function receipt(transaction: any): BlockchainReceipt {
+function receipt(transaction: any, eventName?: string): Promise<BlockchainReceipt> {
 	return transaction.wait().then((result: any) => {
 		if (!result?.hash) throw new Phase2BlockchainError("blockchain receipt was unavailable");
-		return { transactionHash: result.hash };
+		const event = eventName ? result.logs?.find((log: any) => log.fragment?.name === eventName) : undefined;
+		return { transactionHash: result.hash, ...(event?.args?.[0] !== undefined ? { tokenId: event.args[0].toString() } : {}) };
 	});
 }
 
@@ -90,9 +92,19 @@ export function createConfiguredPhase2Client(): Phase2Client {
 	return {
 		registerArtwork: async (request) => receipt(await ownership.registerArtwork(request.artworkHash, request.metadataHash, request.certificateTokenId, request.creator)),
 		transferArtwork: async (request) => receipt(await ownership.transferArtwork(request.artworkHash, request.newOwner)),
-		getArtwork: async (artworkHash) => ownership.artwork(artworkHash),
+		getArtwork: async (artworkHash) => {
+			const record = await ownership.artwork(artworkHash);
+			return {
+				creator: record.creator,
+				currentOwner: record.currentOwner,
+				metadataHash: record.metadataHash,
+				certificateTokenId: record.certificateTokenId.toString(),
+				registeredAt: record.registeredAt.toString(),
+				registered: record.registered,
+			};
+		},
 		getProvenance: async (artworkHash) => ownership.provenance(artworkHash),
-		issueRights: async (request) => receipt(await rights.issueRights(request.artworkHash, request.grantee, request.rightsMask, request.expiresAt, request.metadataUri)),
+		issueRights: async (request) => receipt(await rights.issueRights(request.artworkHash, request.grantee, request.rightsMask, request.expiresAt, request.metadataUri), "RightsIssued"),
 		verifyRights: async (tokenId, rightsMask) => rights.verifyRights(tokenId, rightsMask),
 		revokeRights: async (tokenId) => receipt(await rights.revokeRights(tokenId)),
 	};

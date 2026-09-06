@@ -26,6 +26,12 @@ from app.schemas.phase4 import FileCheckRequest, InversionRequest, PromptRequest
 
 router = APIRouter(prefix="/v1")
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+privacy_query_guard = PrivacyQueryGuard()
+
+
+def reset_privacy_query_guard_for_tests() -> None:
+    global privacy_query_guard
+    privacy_query_guard = PrivacyQueryGuard()
 
 
 async def read_upload(upload: UploadFile) -> bytes:
@@ -54,8 +60,7 @@ def health() -> dict[str, str]:
 
 @router.post("/security/model-inversion")
 def model_inversion_defense(payload: InversionRequest) -> dict:
-    guard = PrivacyQueryGuard(max_queries=payload.max_queries)
-    decision = guard.check(payload.feature_vector)
+    decision = privacy_query_guard.check(payload.feature_vector)
     return {"status": "PROTECTED" if decision["allowed"] else "BLOCKED", "query": decision, "confidence_policy": suppress_confidence([0.0, 1.0])}
 
 

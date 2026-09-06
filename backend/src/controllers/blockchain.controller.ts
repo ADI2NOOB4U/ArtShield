@@ -15,6 +15,10 @@ export function setCertificateIssuerForTests(issuer: typeof issueCertificate): v
 	certificateIssuer = issuer;
 }
 
+export function resetCertificateIssuerForTests(): void {
+	certificateIssuer = issueCertificate;
+}
+
 export async function createCertificate(request: Request, response: Response): Promise<void> {
 	try {
 		const result = await certificateIssuer(request.body as CertificateRequest);

@@ -1,4 +1,6 @@
 import express, { NextFunction, Request, Response } from "express";
+import cors from "cors";
+import helmet from "helmet";
 
 import blockchainRoutes from "./routes/blockchain.routes.js";
 import phase2Routes from "./routes/phase2.routes.js";
@@ -71,6 +73,31 @@ async function callSecurity(path: string, body: unknown): Promise<unknown> {
 }
 
 export const app = express();
+const configuredOrigins = new Set((process.env.CORS_ORIGINS ?? process.env.CORS_ORIGIN ?? "http://localhost:5173")
+	.split(",").map((origin) => origin.trim()).filter(Boolean));
+const corsOptions = {
+	origin(origin: string | undefined, callback: (error: Error | null, allowed?: boolean) => void) {
+		if (!origin || configuredOrigins.has(origin)) {
+			callback(null, true);
+			return;
+		}
+		try {
+			const url = new URL(origin);
+			const isLocalViteOrigin = (url.hostname === "localhost" || url.hostname === "127.0.0.1")
+				&& Number(url.port) >= 5173 && Number(url.port) <= 5199;
+			callback(null, isLocalViteOrigin);
+		} catch {
+			callback(null, false);
+		}
+	},
+	methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+	allowedHeaders: ["Content-Type", "Authorization", "X-ArtShield-Role"],
+	optionsSuccessStatus: 204,
+};
+app.disable("x-powered-by");
+app.use(helmet());
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 app.use(express.json({ limit: "12mb" }));
 app.use("/api", blockchainRoutes);
 app.use("/api", phase2Routes);

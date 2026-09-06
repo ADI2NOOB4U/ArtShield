@@ -3,6 +3,9 @@ let certificateIssuer = issueCertificate;
 export function setCertificateIssuerForTests(issuer) {
     certificateIssuer = issuer;
 }
+export function resetCertificateIssuerForTests() {
+    certificateIssuer = issueCertificate;
+}
 export async function createCertificate(request, response) {
     try {
         const result = await certificateIssuer(request.body);

@@ -9,9 +9,13 @@ from app.layers.layer13_model_inversion.model_inversion import PrivacyQueryGuard
 from app.layers.layer14_prompt_vaccine.prompt_vaccine import analyze_prompt, normalize_prompt
 from app.layers.layer15_polyglot.polyglot_detector import analyze_file
 from app.main import app
+from app.api.routes import reset_privacy_query_guard_for_tests
 
 
 class PhaseFourSecurityTests(unittest.TestCase):
+    def setUp(self):
+        reset_privacy_query_guard_for_tests()
+
     def test_model_query_limit_and_confidence_suppression(self):
         guard = PrivacyQueryGuard(max_queries=2)
         self.assertTrue(guard.check([0.2])["allowed"])
@@ -55,6 +59,14 @@ class PhaseFourSecurityTests(unittest.TestCase):
         self.assertEqual(file_response.json()["status"], "SUSPICIOUS")
         invalid = client.post("/v1/security/file-check", json={"filename": "x", "data_base64": "%%%"})
         self.assertEqual(invalid.status_code, 422)
+
+    def test_model_query_limit_is_stateful_across_http_requests(self):
+        client = TestClient(app)
+        for _ in range(20):
+            self.assertEqual(client.post("/v1/security/model-inversion", json={"feature_vector": [0.1]}).json()["status"], "PROTECTED")
+        limited = client.post("/v1/security/model-inversion", json={"feature_vector": [0.1]})
+        self.assertEqual(limited.status_code, 200)
+        self.assertEqual(limited.json()["status"], "BLOCKED")
 
 
 if __name__ == "__main__":

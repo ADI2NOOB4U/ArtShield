@@ -24,6 +24,7 @@ contract UsageRightsToken is ERC721, Ownable {
 		uint256 rightsMask;
 		uint64 expiresAt;
 		bool revoked;
+		string metadataUri;
 	}
 
 	IArtShieldOwnership public immutable ownership;
@@ -39,7 +40,7 @@ contract UsageRightsToken is ERC721, Ownable {
 	error RightsNotFound();
 	error RightsAlreadyRevoked();
 
-	event RightsIssued(uint256 indexed tokenId, bytes32 indexed artworkHash, address indexed grantee, address issuer, uint256 rightsMask, uint64 expiresAt);
+	event RightsIssued(uint256 indexed tokenId, bytes32 indexed artworkHash, address indexed grantee, address issuer, uint256 rightsMask, uint64 expiresAt, string metadataUri);
 	event RightsRevoked(uint256 indexed tokenId, bytes32 indexed artworkHash, address indexed revoker);
 
 	constructor(address ownershipAddress) ERC721("ArtShield Usage Rights", "ASHRIGHT") Ownable(msg.sender) {
@@ -47,7 +48,7 @@ contract UsageRightsToken is ERC721, Ownable {
 		ownership = IArtShieldOwnership(ownershipAddress);
 	}
 
-	function issueRights(bytes32 artworkHash, address grantee, uint256 rightsMask, uint64 expiresAt, string calldata) external returns (uint256 tokenId) {
+	function issueRights(bytes32 artworkHash, address grantee, uint256 rightsMask, uint64 expiresAt, string calldata metadataUri) external returns (uint256 tokenId) {
 		if (grantee == address(0)) revert InvalidAddress();
 		if (rightsMask == 0 || rightsMask & ~ALL_RIGHTS != 0) revert InvalidRightsMask();
 		if (expiresAt != 0 && expiresAt <= block.timestamp) revert InvalidExpiration();
@@ -59,9 +60,9 @@ contract UsageRightsToken is ERC721, Ownable {
 		}
 		tokenId = _nextTokenId++;
 		_safeMint(grantee, tokenId);
-		_rights[tokenId] = Rights(artworkHash, msg.sender, grantee, rightsMask, expiresAt, false);
+		_rights[tokenId] = Rights(artworkHash, msg.sender, grantee, rightsMask, expiresAt, false, metadataUri);
 		existing.push(tokenId);
-		emit RightsIssued(tokenId, artworkHash, grantee, msg.sender, rightsMask, expiresAt);
+		emit RightsIssued(tokenId, artworkHash, grantee, msg.sender, rightsMask, expiresAt, metadataUri);
 	}
 
 	function revokeRights(uint256 tokenId) external {

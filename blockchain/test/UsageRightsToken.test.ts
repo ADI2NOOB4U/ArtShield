@@ -24,6 +24,7 @@ describe("UsageRightsToken", function () {
     expect(await rights.ownerOf(1)).to.equal(grantee.address);
     expect(await rights.verifyRights(1, commercial)).to.equal(true);
     expect(await rights.verifyRights(1, await rights.AI_TRAINING())).to.equal(false);
+    expect((await rights.rights(1)).metadataUri).to.equal("uri");
   });
 
   it("rejects unauthorized, invalid, and conflicting rights", async function () {

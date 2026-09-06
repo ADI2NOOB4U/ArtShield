@@ -1,4 +1,6 @@
 import express from "express";
+import cors from "cors";
+import helmet from "helmet";
 import blockchainRoutes from "./routes/blockchain.routes.js";
 import phase2Routes from "./routes/phase2.routes.js";
 const MAX_IMAGE_BASE64_LENGTH = 14 * 1024 * 1024;
@@ -57,6 +59,11 @@ async function callSecurity(path, body) {
     return response.json();
 }
 export const app = express();
+const configuredOrigins = (process.env.CORS_ORIGINS ?? process.env.CORS_ORIGIN ?? "http://localhost:5173")
+    .split(",").map((origin) => origin.trim()).filter(Boolean);
+app.disable("x-powered-by");
+app.use(helmet());
+app.use(cors({ origin: configuredOrigins, credentials: false }));
 app.use(express.json({ limit: "12mb" }));
 app.use("/api", blockchainRoutes);
 app.use("/api", phase2Routes);

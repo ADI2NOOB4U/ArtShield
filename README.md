@@ -1,3 +1,14 @@
+# ArtShield
+
+## Real local blockchain E2E
+
+With Node.js and PowerShell available, run the complete local Hardhat HTTP workflow from the repository root:
+
+```powershell
+.\scripts\e2e-local.ps1
+```
+
+The script starts a local Hardhat node, deploys the phase-two contracts, runs certificate, artwork ownership, and usage-rights routes against the live chain, and stops the node when it finishes. It uses only Hardhat's documented local test account and a local demo bearer token.
 # ArtShield: Multi-Layer AI-Resistant Art Protection & Poisoning System
 
 ## Project Status

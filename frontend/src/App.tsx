@@ -1,6 +1,7 @@
 import { ChangeEvent, FormEvent, useState } from "react";
 
-const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+const configuredApiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+const apiUrl = configuredApiUrl.replace(/\/api\/?$/, "").replace(/\/+$/, "");
 
 type ProtectionResult = {
 	fingerprint: string;
@@ -38,8 +39,40 @@ function fileAsBase64(file: File): Promise<string> {
 }
 
 function base64AsFile(value: string, name: string): File {
+	return new File([base64AsBlob(value)], name, { type: "image/png" });
+}
+
+function base64AsBlob(value: string): Blob {
 	const bytes = Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
-	return new File([bytes], name, { type: "image/png" });
+	return new Blob([bytes], { type: "image/png" });
+}
+
+async function readApiResponse<T>(response: Response): Promise<T> {
+	const text = await response.text();
+	let body: unknown = null;
+	try {
+		body = text ? JSON.parse(text) : null;
+	} catch {
+		body = null;
+	}
+	if (!response.ok) {
+		const message = body && typeof body === "object" && "error" in body && typeof body.error === "string"
+			? body.error
+			: text || response.statusText || "Request failed";
+		throw new Error(`${response.status} ${message}`);
+	}
+	return body as T;
+}
+
+async function requestApi<T>(path: string, options: RequestInit = {}): Promise<T> {
+	try {
+		return await readApiResponse<T>(await fetch(`${apiUrl}${path}`, options));
+	} catch (requestError) {
+		if (requestError instanceof TypeError) {
+			throw new Error(`Unable to reach ArtShield backend at ${apiUrl}: ${requestError.message}`);
+		}
+		throw requestError;
+	}
 }
 
 export default function App() {
@@ -50,6 +83,7 @@ export default function App() {
 	const [result, setResult] = useState<ProtectionResult | null>(null);
 	const [error, setError] = useState("");
 	const [busy, setBusy] = useState(false);
+	const [verificationBusy, setVerificationBusy] = useState(false);
 	const [creator, setCreator] = useState("");
 	const [metadataHash, setMetadataHash] = useState("");
 	const [certificateTokenId, setCertificateTokenId] = useState("0");
@@ -57,10 +91,15 @@ export default function App() {
 	const [rightsMask, setRightsMask] = useState("4");
 	const [rightsTokenId, setRightsTokenId] = useState("");
 	const [phase2Message, setPhase2Message] = useState("");
+	const [phase2Error, setPhase2Error] = useState(false);
+	const [transferBusy, setTransferBusy] = useState(false);
 	const [lookupFingerprint, setLookupFingerprint] = useState("");
 	const [verification, setVerification] = useState<VerificationResult | null>(null);
 	const [artifactToVerify, setArtifactToVerify] = useState<File | null>(null);
 	const [certificate, setCertificate] = useState<CertificateResult | null>(null);
+	const [downloadMessage, setDownloadMessage] = useState("");
+	const [mutationToken, setMutationToken] = useState("");
+	const [newOwner, setNewOwner] = useState("");
 
 	function onFileChange(event: ChangeEvent<HTMLInputElement>) {
 		setFile(event.target.files?.[0] ?? null);
@@ -68,7 +107,26 @@ export default function App() {
 		setVerification(null);
 		setArtifactToVerify(null);
 		setCertificate(null);
+		setDownloadMessage("");
 		setError("");
+	}
+
+	function downloadProtectedArtifact() {
+		if (!result?.protected_image_base64) {
+			setDownloadMessage("The protected artifact is not available to download.");
+			return;
+		}
+		try {
+			const objectUrl = URL.createObjectURL(base64AsBlob(result.protected_image_base64));
+			const link = document.createElement("a");
+			link.href = objectUrl;
+			link.download = "artshield-protected.png";
+			link.click();
+			window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+			setDownloadMessage(`Protected artifact downloaded as artshield-protected.png. SHA-256: ${result.protected_artifact_hash}`);
+		} catch (downloadError) {
+			setDownloadMessage(downloadError instanceof Error ? `Download failed: ${downloadError.message}` : "Download failed.");
+		}
 	}
 
 	async function verifySelectedArtwork() {
@@ -76,10 +134,10 @@ export default function App() {
 			setError("Protect an artwork first, then verify the protected artifact.");
 			return;
 		}
-		setBusy(true);
+		setVerificationBusy(true);
 		setError("");
 		try {
-			const response = await fetch(`${apiUrl}/api/verification`, {
+			const body = await requestApi<VerificationResult>("/api/verification", {
 				method: "POST",
 				headers: { "content-type": "application/json" },
 				body: JSON.stringify({
@@ -90,13 +148,11 @@ export default function App() {
 					metadata: { title, artist },
 				}),
 			});
-			const body = await response.json();
-			if (!response.ok) throw new Error(body.error ?? "Verification request failed");
-			setVerification(body as VerificationResult);
+			setVerification(body);
 		} catch (requestError) {
 			setError(requestError instanceof Error ? requestError.message : "Verification request failed");
 		} finally {
-			setBusy(false);
+			setVerificationBusy(false);
 		}
 	}
 
@@ -109,7 +165,7 @@ export default function App() {
 		setBusy(true);
 		setError("");
 		try {
-			const response = await fetch(`${apiUrl}/api/protection`, {
+			const body = await requestApi<ProtectionResult>("/api/protection", {
 				method: "POST",
 				headers: { "content-type": "application/json" },
 				body: JSON.stringify({
@@ -118,9 +174,7 @@ export default function App() {
 					metadata: { title, artist },
 				}),
 			});
-			const body = await response.json();
-			if (!response.ok) throw new Error(body.error ?? "Protection request failed");
-			setResult(body as ProtectionResult);
+			setResult(body);
 		} catch (requestError) {
 			setError(requestError instanceof Error ? requestError.message : "Protection request failed");
 		} finally {
@@ -128,17 +182,14 @@ export default function App() {
 		}
 	}
 
-	async function phase2Request(path: string, options: RequestInit = {}) {
-		const response = await fetch(`${apiUrl}${path}`, { ...options, headers: { "content-type": "application/json", ...(options.headers ?? {}) } });
-		const body = await response.json();
-		if (!response.ok) throw new Error(body.error ?? "Blockchain operation failed");
-		return body;
+	async function phase2Request<T>(path: string, options: RequestInit = {}): Promise<T> {
+		return requestApi<T>(path, { ...options, headers: { ...(options.body ? { "content-type": "application/json" } : {}), ...(mutationToken ? { authorization: `Bearer ${mutationToken}`, "x-artshield-role": "operator" } : {}), ...(options.headers ?? {}) } });
 	}
 
 	async function registerProvenance() {
 		if (!result?.fingerprint) { setPhase2Message("Protect the artwork first to obtain its canonical fingerprint."); return; }
 		try {
-			const body = await phase2Request("/api/artworks/register", { method: "POST", body: JSON.stringify({ artworkFingerprint: result.fingerprint, metadataHash, certificateTokenId, creator }) });
+			const body = await phase2Request<{ transactionHash: string }>("/api/artworks/register", { method: "POST", body: JSON.stringify({ artworkFingerprint: result.fingerprint, metadataHash, certificateTokenId, creator }) });
 			setPhase2Message(`Registration submitted: ${body.transactionHash}`);
 		} catch (requestError) { setPhase2Message(requestError instanceof Error ? requestError.message : "Registration failed"); }
 	}
@@ -146,7 +197,7 @@ export default function App() {
 	async function issueUsageRights() {
 		if (!result?.fingerprint) { setPhase2Message("Protect the artwork first to obtain its canonical fingerprint."); return; }
 		try {
-			const body = await phase2Request("/api/rights", { method: "POST", body: JSON.stringify({ artworkFingerprint: result.fingerprint, grantee, rightsMask: Number(rightsMask), metadataUri: "ipfs://rights-metadata" }) });
+			const body = await phase2Request<{ transactionHash: string }>("/api/rights", { method: "POST", body: JSON.stringify({ artworkFingerprint: result.fingerprint, grantee, rightsMask: Number(rightsMask), metadataUri: "ipfs://rights-metadata" }) });
 			setPhase2Message(`Rights transaction submitted: ${body.transactionHash}`);
 		} catch (requestError) { setPhase2Message(requestError instanceof Error ? requestError.message : "Rights issuance failed"); }
 	}
@@ -157,7 +208,7 @@ export default function App() {
 			return;
 		}
 		try {
-			const body = await phase2Request("/api/certificates", {
+			const body = await phase2Request<CertificateResult>("/api/certificates", {
 				method: "POST",
 				body: JSON.stringify({
 					recipient: creator,
@@ -176,23 +227,44 @@ export default function App() {
 	async function lookupProvenance() {
 		try {
 			const [artwork, history] = await Promise.all([
-				phase2Request(`/api/artworks/${encodeURIComponent(lookupFingerprint)}`),
-				phase2Request(`/api/artworks/${encodeURIComponent(lookupFingerprint)}/provenance`),
+				phase2Request<{ currentOwner?: string; [key: number]: unknown }>(`/api/artworks/${encodeURIComponent(lookupFingerprint)}`),
+				phase2Request<unknown[]>(`/api/artworks/${encodeURIComponent(lookupFingerprint)}/provenance`),
 			]);
-			setPhase2Message(`Current owner: ${artwork.currentOwner ?? artwork[1] ?? "unavailable"}; provenance entries: ${history.length}`);
+			const owner = artwork.currentOwner ?? (typeof artwork[1] === "string" ? artwork[1] : undefined) ?? "unavailable";
+			setPhase2Message(`Current owner: ${owner}; provenance entries: ${history.length}`);
 		} catch (requestError) { setPhase2Message(requestError instanceof Error ? requestError.message : "Provenance lookup failed"); }
+	}
+
+	async function transferOwnership() {
+		if (!/^[a-f0-9]{64}$/i.test(lookupFingerprint)) {
+			setPhase2Message("Enter a 64-character artwork fingerprint before transferring ownership.");
+			setPhase2Error(true);
+			return;
+		}
+		if (!/^0x[a-f0-9]{40}$/i.test(newOwner) || /^0x0{40}$/i.test(newOwner)) {
+			setPhase2Message("Enter a valid non-zero Ethereum owner address.");
+			setPhase2Error(true);
+			return;
+		}
+		setTransferBusy(true);
+		setPhase2Error(false);
+		try {
+			const body = await phase2Request<{ transactionHash: string }>("/api/artworks/transfer", { method: "POST", body: JSON.stringify({ artworkFingerprint: lookupFingerprint, newOwner }) });
+			setPhase2Message(`Ownership transfer confirmed: ${body.transactionHash}`);
+		} catch (requestError) { setPhase2Error(true); setPhase2Message(requestError instanceof Error ? requestError.message : "Ownership transfer failed"); }
+		finally { setTransferBusy(false); }
 	}
 
 	async function verifyUsageRights() {
 		try {
-			const body = await phase2Request(`/api/rights/${encodeURIComponent(rightsTokenId)}/verify?rightsMask=${encodeURIComponent(rightsMask)}`);
+			const body = await phase2Request<{ valid: boolean }>(`/api/rights/${encodeURIComponent(rightsTokenId)}/verify?rightsMask=${encodeURIComponent(rightsMask)}`);
 			setPhase2Message(body.valid ? "Rights are currently valid." : "Rights are not valid.");
 		} catch (requestError) { setPhase2Message(requestError instanceof Error ? requestError.message : "Rights verification failed"); }
 	}
 
 	async function revokeUsageRights() {
 		try {
-			const body = await phase2Request(`/api/rights/${encodeURIComponent(rightsTokenId)}/revoke`, { method: "POST" });
+			const body = await phase2Request<{ transactionHash: string }>(`/api/rights/${encodeURIComponent(rightsTokenId)}/revoke`, { method: "POST" });
 			setPhase2Message(`Revocation submitted: ${body.transactionHash}`);
 		} catch (requestError) { setPhase2Message(requestError instanceof Error ? requestError.message : "Rights revocation failed"); }
 	}
@@ -217,7 +289,7 @@ export default function App() {
 					<label>Watermark<input value={watermark} onChange={(event) => setWatermark(event.target.value)} maxLength={2048} required /></label>
 					<button type="submit" disabled={busy}>{busy ? "Working..." : "Protect artwork"}</button>
 					<label>Artifact to verify<input type="file" accept="image/png" onChange={(event) => { setArtifactToVerify(event.target.files?.[0] ?? null); setVerification(null); }} /></label>
-					<button className="secondary" type="button" onClick={verifySelectedArtwork} disabled={busy || !result}>{busy ? "Working..." : "Verify protected artifact"}</button>
+					<button className="secondary" type="button" onClick={verifySelectedArtwork} disabled={verificationBusy || !artifactToVerify || !result?.protected_image_base64 || !result.protected_artifact_hash}>{verificationBusy ? "Working..." : "Verify protected artifact"}</button>
 					{error && <p className="error" role="alert">{error}</p>}
 				</form>
 				<aside className="panel result" aria-live="polite">
@@ -233,6 +305,8 @@ export default function App() {
 								<dt>Embedded watermark</dt>
 								<dd>{result.watermark}</dd>
 							</dl>
+							<button type="button" onClick={downloadProtectedArtifact}>Download protected artifact</button>
+							{downloadMessage && <p className={downloadMessage.startsWith("Download failed") || downloadMessage.startsWith("The protected") ? "error" : "download-success"} role={downloadMessage.startsWith("Download failed") || downloadMessage.startsWith("The protected") ? "alert" : "status"}>{downloadMessage}</p>}
 						</>
 					) : <p className="muted">Your protected artifact and evidence will appear here.</p>}
 					{verification && <div className={`verification ${verification.authentic ? "verified" : "tampered"}`}><strong>{verification.authentic ? "INTEGRITY VERIFIED" : "TAMPERING DETECTED"}</strong><span>{verification.reasons.length ? verification.reasons.join("; ") : "Selected artwork matches the submitted fingerprint."}</span></div>}
@@ -246,7 +320,8 @@ export default function App() {
 			</section>
 			<section className="workspace" aria-label="Ownership and usage rights">
 				<section className="panel">
-					<p className="eyebrow">PHASE 2 / PROVENANCE</p>
+					<p className="eyebrow">PHASE 2 / PROVENANCE / DEMO-LOCAL AUTH</p>
+										<label>Demo mutation token<input type="password" value={mutationToken} onChange={(event) => setMutationToken(event.target.value)} placeholder="Provided by the local backend operator" /></label>
 					<label>Creator wallet<input value={creator} onChange={(event) => setCreator(event.target.value)} placeholder="0x..." /></label>
 					<label>Metadata hash<input value={metadataHash} onChange={(event) => setMetadataHash(event.target.value)} placeholder="0x + 64 hex characters" /></label>
 					<label>Certificate token ID<input value={certificateTokenId} onChange={(event) => setCertificateTokenId(event.target.value)} /></label>
@@ -255,6 +330,8 @@ export default function App() {
 										{certificate && <dl><dt>Certificate token</dt><dd>{certificate.tokenId}</dd><dt>Transaction</dt><dd>{certificate.transactionHash}</dd><dt>Network</dt><dd>Chain {certificate.chainId}</dd><dt>Contract</dt><dd>{certificate.contractAddress}</dd></dl>}
 					<label>Lookup fingerprint<input value={lookupFingerprint} onChange={(event) => setLookupFingerprint(event.target.value)} placeholder="64 hex characters" /></label>
 					<button type="button" onClick={lookupProvenance}>Lookup ownership and provenance</button>
+					<label>New owner address<input value={newOwner} onChange={(event) => setNewOwner(event.target.value)} placeholder="0x..." /></label>
+					<button type="button" onClick={transferOwnership} disabled={transferBusy}>{transferBusy ? "Submitting..." : "Transfer ownership"}</button>
 					<p className="muted">The backend submits the transaction only when blockchain configuration and signer authorization are available.</p>
 				</section>
 				<section className="panel">
@@ -263,7 +340,7 @@ export default function App() {
 					<label>Rights mask<input type="number" min="1" max="63" value={rightsMask} onChange={(event) => setRightsMask(event.target.value)} /></label>
 					<label>Rights token ID<input value={rightsTokenId} onChange={(event) => setRightsTokenId(event.target.value)} placeholder="Token ID for verify/revoke" /></label>
 					<div className="button-row"><button type="button" onClick={issueUsageRights}>Issue rights</button><button type="button" onClick={verifyUsageRights}>Verify rights</button><button type="button" onClick={revokeUsageRights}>Revoke rights</button></div>
-					{phase2Message && <p className="error" role="status">{phase2Message}</p>}
+					{phase2Message && <p className={phase2Error ? "error" : "muted"} role={phase2Error ? "alert" : "status"}>{phase2Message}</p>}
 				</section>
 			</section>
 		</main>
