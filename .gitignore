@@ -1,0 +1,138 @@
+# ==============================
+# Environment & Secrets
+# ==============================
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ==============================
+# Node (frontend/, blockchain/ tooling, etc.)
+# ==============================
+node_modules/
+frontend/node_modules/
+blockchain/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.next/
+frontend/.turbo/
+frontend/.cache/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# NOTE: dependency lockfiles are intentionally NOT ignored
+# package-lock.json, yarn.lock, pnpm-lock.yaml must be committed
+
+# ==============================
+# Python (backend/, ml-service/)
+# ==============================
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/.venv/
+backend/venv/
+backend/env/
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.ruff_cache/
+backend/*.egg-info/
+
+ml-service/__pycache__/
+ml-service/**/__pycache__/
+ml-service/*.pyc
+ml-service/.venv/
+ml-service/venv/
+ml-service/env/
+ml-service/.pytest_cache/
+ml-service/.mypy_cache/
+ml-service/.ruff_cache/
+ml-service/*.egg-info/
+
+# ML-generated model artifacts / weights / checkpoints
+ml-service/models/
+ml-service/**/*.h5
+ml-service/**/*.pt
+ml-service/**/*.pth
+ml-service/**/*.onnx
+ml-service/**/*.ckpt
+ml-service/**/checkpoints/
+
+# ==============================
+# Solidity / Hardhat (blockchain/)
+# ==============================
+blockchain/artifacts/
+blockchain/cache/
+blockchain/typechain/
+blockchain/typechain-types/
+blockchain/.openzeppelin/
+blockchain/coverage/
+blockchain/coverage.json
+
+# Local blockchain state
+blockchain/.hardhat/
+blockchain/hardhat_network_state.json
+
+# ==============================
+# Docker
+# ==============================
+docker/docker-compose.override.yml
+docker-compose.override.yml
+
+# ==============================
+# Database (PostgreSQL/Redis local persistent data)
+# ==============================
+database/data/
+database/pgdata/
+database/redis-data/
+database/*.rdb
+database/*.aof
+
+# ==============================
+# Logs
+# ==============================
+logs/
+*.log
+
+# ==============================
+# Uploads / generated assets
+# ==============================
+data/uploads/
+data/generated/
+ipfs/uploads/
+ipfs/staging/
+
+# ==============================
+# IDE / Editor
+# ==============================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ==============================
+# OS files
+# ==============================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ==============================
+# Temporary files
+# ==============================
+*.tmp
+*.temp
+*.bak
+tmp/
+temp/
+
+# ==============================
+# Coverage / Test artifacts
+# ==============================
+coverage/
+.coverage
+htmlcov/
+*.lcov
+.nyc_output/

@@ -1,0 +1,43 @@
+{
+  "name": "artshield-backend",
+  "version": "0.0.1",
+  "private": true,
+  "description": "ArtShield Node/Express backend (Phase 0 scaffold)",
+  "type": "module",
+  "main": "src/app.ts",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "test": "tsx --test tests/*.test.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "pg": "^8.23.0",
+    "ioredis": "^6.0.0",
+    "socket.io": "^4.8.3",
+    "dotenv": "^17.4.2",
+    "cors": "^2.8.6",
+    "helmet": "^8.3.0",
+    "express-rate-limit": "^8.7.0",
+    "compression": "^1.8.1"
+    ,"ethers": "^6.17.0"
+  },
+  "devDependencies": {
+    "@types/compression": "^1.7.3",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.4",
+    "@types/pg": "^8.11.10",
+    "typescript": "^5.7.3",
+    "tsx": "^4.19.4",
+    "eslint": "^9.25.0",
+    "@eslint/js": "^9.25.0",
+    "globals": "^15.15.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
