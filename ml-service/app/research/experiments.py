@@ -37,13 +37,13 @@ class ExperimentConfig:
     def validate(self) -> None:
         if not EXPERIMENT_ID.fullmatch(self.experiment_id):
             raise ValueError("experiment_id must be 3-64 safe characters")
-        if not 0 <= self.seed <= 2**32 - 1:
+        if isinstance(self.seed, bool) or not isinstance(self.seed, int) or not 0 <= self.seed <= 2**32 - 1:
             raise ValueError("seed is out of range")
-        if not 4 <= self.samples_per_class <= MAX_SAMPLES // 2:
+        if isinstance(self.samples_per_class, bool) or not isinstance(self.samples_per_class, int) or not 4 <= self.samples_per_class <= MAX_SAMPLES // 2:
             raise ValueError("samples_per_class must be between 4 and 128")
-        if not 0 <= self.poisoning_ratio <= 0.5:
+        if not isinstance(self.poisoning_ratio, (int, float)) or isinstance(self.poisoning_ratio, bool) or not math.isfinite(self.poisoning_ratio) or not 0 <= self.poisoning_ratio <= 0.5:
             raise ValueError("poisoning_ratio must be between 0 and 0.5")
-        if not 0 <= self.perturbation_budget <= 0.25:
+        if not isinstance(self.perturbation_budget, (int, float)) or isinstance(self.perturbation_budget, bool) or not math.isfinite(self.perturbation_budget) or not 0 <= self.perturbation_budget <= 0.25:
             raise ValueError("perturbation_budget must be between 0 and 0.25")
 
 
@@ -158,7 +158,7 @@ def run_experiment(config: ExperimentConfig) -> dict[str, Any]:
     contaminated_gradient = ((contaminated_probabilities - poisoned_labels)[:, None] * contaminated_gradient_features).mean(axis=0)
     gradient_shift = float(np.linalg.norm(contaminated_gradient - gradient))
 
-    signature_scores = np.linalg.norm(manipulated_embeddings - clean_embeddings, axis=1)
+    signature_scores = np.linalg.norm(_features(poisoned_images) - _features(train_images), axis=1)
     threshold = float(np.quantile(signature_scores, 0.9))
     suspicious_count = int(np.sum(signature_scores >= threshold)) if poisoned_indexes else 0
     signature_label = "CLEAN" if not poisoned_indexes else ("POISON-LIKELY" if suspicious_count > 0 else "SUSPICIOUS")
@@ -186,9 +186,19 @@ def run_experiment(config: ExperimentConfig) -> dict[str, Any]:
 
 
 def inspect_signature(images: np.ndarray, reference_images: np.ndarray) -> dict[str, Any]:
-    if images.ndim != 3 or reference_images.ndim != 3 or images.shape[1:] != reference_images.shape[1:]:
+    if not isinstance(images, np.ndarray) or not isinstance(reference_images, np.ndarray):
         raise ValueError("images must be matching 3D arrays")
-    distances = np.linalg.norm(_features(images)[:, ::8] - _features(reference_images)[: len(images), ::8], axis=1)
+    if images.ndim != 3 or reference_images.ndim != 3 or images.shape != reference_images.shape:
+        raise ValueError("images must be matching non-empty 3D arrays")
+    if images.shape[0] == 0:
+        raise ValueError("images must contain at least one sample")
+    try:
+        finite = np.isfinite(images).all() and np.isfinite(reference_images).all()
+    except TypeError as exc:
+        raise ValueError("images must contain finite numeric values") from exc
+    if not finite:
+        raise ValueError("images must contain finite numeric values")
+    distances = np.linalg.norm(_features(images) - _features(reference_images), axis=1)
     score = float(np.mean(distances))
     label = "CLEAN" if score < 0.5 else ("SUSPICIOUS" if score < 2.0 else "POISON-LIKELY")
     return {"label": label, "score": score, "reasons": ["embedding displacement"] if score >= 0.5 else []}

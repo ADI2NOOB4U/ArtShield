@@ -11,9 +11,11 @@ const RIGHTS_ABI = [
 	"function issueRights(bytes32,address,uint256,uint64,string) returns (uint256)",
 	"function revokeRights(uint256)",
 	"function verifyRights(uint256,uint256) view returns (bool)",
-	"function rights(uint256) view returns (bytes32 artworkHash,address issuer,address grantee,uint256 rightsMask,uint64 expiresAt,bool revoked,string metadataUri)",
+	"function rights(uint256) view returns (tuple(bytes32 artworkHash,address issuer,address grantee,uint256 rightsMask,uint64 expiresAt,bool revoked,string metadataUri))",
+	"function rightsForArtwork(bytes32) view returns (uint256[])",
 		"event RightsIssued(uint256 indexed tokenId,bytes32 indexed artworkHash,address indexed grantee,address issuer,uint256 rightsMask,uint64 expiresAt,string metadataUri)",
 ];
+const MAX_UINT256 = (1n << 256n) - 1n;
 
 export type RegisterArtworkRequest = { artworkFingerprint: string; metadataHash: string; certificateTokenId: string; creator: string };
 export type IssueRightsRequest = { artworkFingerprint: string; grantee: string; rightsMask: number; expiresAt?: number; metadataUri: string };
@@ -33,40 +35,47 @@ export interface Phase2Client {
 export class Phase2ValidationError extends Error {}
 export class Phase2ConfigurationError extends Error {}
 export class Phase2BlockchainError extends Error {}
+export class Phase2ConflictError extends Error {}
 
 function hash(value: string, field: string): string {
-	if (!/^0x[a-f0-9]{64}$/i.test(value)) throw new Phase2ValidationError(`${field} must be a 32-byte hex hash`);
+	if (typeof value !== "string" || !/^0x[a-f0-9]{64}$/i.test(value)) throw new Phase2ValidationError(`${field} must be a 32-byte hex hash`);
 	return value.toLowerCase();
 }
 
 function address(value: string, field: string): string {
-	if (!isAddress(value) || value === "0x0000000000000000000000000000000000000000") throw new Phase2ValidationError(`${field} must be a non-zero wallet address`);
+	if (typeof value !== "string" || !isAddress(value) || value === "0x0000000000000000000000000000000000000000") throw new Phase2ValidationError(`${field} must be a non-zero wallet address`);
 	return value;
 }
 
 export function validateRegister(request: RegisterArtworkRequest) {
+	if (!request || typeof request !== "object") throw new Phase2ValidationError("registration request must be an object");
 	const artworkHash = validateArtworkFingerprint(request.artworkFingerprint);
 	const metadataHash = hash(request.metadataHash, "metadataHash");
+	if (typeof request.certificateTokenId !== "string" || !/^\d+$/.test(request.certificateTokenId)) throw new Phase2ValidationError("certificateTokenId must be a non-negative integer");
 	const certificateTokenId = BigInt(request.certificateTokenId);
-	if (certificateTokenId < 0n) throw new Phase2ValidationError("certificateTokenId must be non-negative");
+	if (certificateTokenId < 0n || certificateTokenId > MAX_UINT256) throw new Phase2ValidationError("certificateTokenId must fit uint256");
 	return { artworkHash, metadataHash, certificateTokenId, creator: address(request.creator, "creator") };
 }
 
 export function validateArtworkFingerprint(value: string) {
+	if (typeof value !== "string") throw new Phase2ValidationError("artworkFingerprint must be a 64-character hex digest");
 	return hash(value.startsWith("0x") ? value : `0x${value}`, "artworkFingerprint");
 }
 
 export function validateRights(request: IssueRightsRequest) {
+	if (!request || typeof request !== "object") throw new Phase2ValidationError("rights request must be an object");
+	if (typeof request.artworkFingerprint !== "string") throw new Phase2ValidationError("artworkFingerprint must be a 64-character hex digest");
 	const artworkHash = hash(request.artworkFingerprint.startsWith("0x") ? request.artworkFingerprint : `0x${request.artworkFingerprint}`, "artworkFingerprint");
 	const grantee = address(request.grantee, "grantee");
-	if (!Number.isInteger(request.rightsMask) || request.rightsMask <= 0 || request.rightsMask > 63) throw new Phase2ValidationError("rightsMask must be an integer between 1 and 63");
+	if (!Number.isSafeInteger(request.rightsMask) || request.rightsMask <= 0 || request.rightsMask > 63) throw new Phase2ValidationError("rightsMask must be an integer between 1 and 63");
 	const expiresAt = request.expiresAt ?? 0;
-	if (!Number.isInteger(expiresAt) || expiresAt < 0) throw new Phase2ValidationError("expiresAt must be a non-negative timestamp");
-	if (typeof request.metadataUri !== "string" || request.metadataUri.length < 1 || request.metadataUri.length > 2048) throw new Phase2ValidationError("metadataUri is required and bounded");
+	if (!Number.isSafeInteger(expiresAt) || expiresAt < 0) throw new Phase2ValidationError("expiresAt must be a non-negative timestamp");
+	if (typeof request.metadataUri !== "string" || request.metadataUri.length < 1 || request.metadataUri.length > 2048 || !/^[a-z][a-z0-9+.-]*:/i.test(request.metadataUri)) throw new Phase2ValidationError("metadataUri must be a bounded URI with a scheme");
 	return { artworkHash, grantee, rightsMask: request.rightsMask, expiresAt, metadataUri: request.metadataUri };
 }
 
 export function validateTransfer(request: TransferArtworkRequest) {
+	if (!request || typeof request !== "object") throw new Phase2ValidationError("transfer request must be an object");
 	return { artworkHash: validateArtworkFingerprint(request.artworkFingerprint), newOwner: address(request.newOwner, "newOwner") };
 }
 
@@ -86,11 +95,25 @@ export function createConfiguredPhase2Client(): Phase2Client {
 	if (!rpcUrl || !ownershipAddress || !rightsAddress || !privateKey) throw new Phase2ConfigurationError("Phase 2 blockchain configuration is incomplete");
 	if (!isAddress(ownershipAddress) || !isAddress(rightsAddress)) throw new Phase2ConfigurationError("Phase 2 contract address is invalid");
 	const provider = new JsonRpcProvider(rpcUrl);
-	const signer = new Wallet(privateKey, provider);
+	let signer: Wallet;
+	try { signer = new Wallet(privateKey, provider); } catch { throw new Phase2ConfigurationError("CERTIFICATE_SIGNER_PRIVATE_KEY is invalid"); }
 	const ownership = new Contract(ownershipAddress, OWNERSHIP_ABI, signer);
 	const rights = new Contract(rightsAddress, RIGHTS_ABI, signer);
 	return {
-		registerArtwork: async (request) => receipt(await ownership.registerArtwork(request.artworkHash, request.metadataHash, request.certificateTokenId, request.creator)),
+		registerArtwork: async (request) => {
+			try {
+				await ownership.artwork(request.artworkHash);
+				throw new Phase2ConflictError("artwork is already registered");
+			} catch (error) {
+				if (error instanceof Phase2ConflictError) throw error;
+			}
+			try {
+				return await receipt(await ownership.registerArtwork(request.artworkHash, request.metadataHash, request.certificateTokenId, request.creator));
+			} catch (error) {
+				if (String(error).includes("ArtworkAlreadyRegistered")) throw new Phase2ConflictError("artwork is already registered");
+				throw error;
+			}
+		},
 		transferArtwork: async (request) => receipt(await ownership.transferArtwork(request.artworkHash, request.newOwner)),
 		getArtwork: async (artworkHash) => {
 			const record = await ownership.artwork(artworkHash);
@@ -104,7 +127,28 @@ export function createConfiguredPhase2Client(): Phase2Client {
 			};
 		},
 		getProvenance: async (artworkHash) => ownership.provenance(artworkHash),
-		issueRights: async (request) => receipt(await rights.issueRights(request.artworkHash, request.grantee, request.rightsMask, request.expiresAt, request.metadataUri), "RightsIssued"),
+		issueRights: async (request) => {
+			try {
+				const existingTokens = await rights.rightsForArtwork(request.artworkHash);
+				const latestBlock = await provider.getBlock("latest");
+				const now = BigInt(latestBlock?.timestamp ?? 0);
+				for (const tokenId of existingTokens) {
+					const prior = await rights.rights(tokenId);
+					const active = !prior.revoked && (prior.expiresAt === 0n || prior.expiresAt >= now);
+					if (active && prior.grantee.toLowerCase() === request.grantee.toLowerCase() && prior.rightsMask === BigInt(request.rightsMask)) {
+						throw new Phase2ConflictError("conflicting rights already exist");
+					}
+				}
+			} catch (error) {
+				if (error instanceof Phase2ConflictError) throw error;
+			}
+			try {
+				return await receipt(await rights.issueRights(request.artworkHash, request.grantee, request.rightsMask, request.expiresAt, request.metadataUri), "RightsIssued");
+			} catch (error) {
+				if (String(error).includes("RightsConflict")) throw new Phase2ConflictError("conflicting rights already exist");
+				throw error;
+			}
+		},
 		verifyRights: async (tokenId, rightsMask) => rights.verifyRights(tokenId, rightsMask),
 		revokeRights: async (tokenId) => receipt(await rights.revokeRights(tokenId)),
 	};
@@ -121,10 +165,14 @@ export async function getArtwork(fingerprint: string) { return getPhase2Client()
 export async function getProvenance(fingerprint: string) { return getPhase2Client().getProvenance(validateArtworkFingerprint(fingerprint)); }
 export async function issueRights(request: IssueRightsRequest) { return getPhase2Client().issueRights(validateRights(request)); }
 export async function verifyRights(tokenId: string, rightsMask: number) {
-	if (!/^\d+$/.test(tokenId) || !Number.isInteger(rightsMask) || rightsMask <= 0 || rightsMask > 63) throw new Phase2ValidationError("invalid rights verification request");
-	return getPhase2Client().verifyRights(BigInt(tokenId), rightsMask);
+	if (!/^\d+$/.test(tokenId)) throw new Phase2ValidationError("invalid rights verification request");
+	const numericTokenId = BigInt(tokenId);
+	if (numericTokenId > MAX_UINT256 || !Number.isInteger(rightsMask) || rightsMask <= 0 || rightsMask > 63) throw new Phase2ValidationError("invalid rights verification request");
+	return getPhase2Client().verifyRights(numericTokenId, rightsMask);
 }
 export async function revokeRights(tokenId: string) {
 	if (!/^\d+$/.test(tokenId)) throw new Phase2ValidationError("tokenId must be a non-negative integer");
-	return getPhase2Client().revokeRights(BigInt(tokenId));
+	const numericTokenId = BigInt(tokenId);
+	if (numericTokenId > MAX_UINT256) throw new Phase2ValidationError("tokenId must fit uint256");
+	return getPhase2Client().revokeRights(numericTokenId);
 }

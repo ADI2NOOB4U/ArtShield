@@ -1,4 +1,5 @@
-import { ChangeEvent, FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
+import { loadVerificationReferences, saveVerificationReference, VerificationReference } from "./verificationReference";
 
 const configuredApiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 const apiUrl = configuredApiUrl.replace(/\/api\/?$/, "").replace(/\/+$/, "");
@@ -38,10 +39,6 @@ function fileAsBase64(file: File): Promise<string> {
 	});
 }
 
-function base64AsFile(value: string, name: string): File {
-	return new File([base64AsBlob(value)], name, { type: "image/png" });
-}
-
 function base64AsBlob(value: string): Blob {
 	const bytes = Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
 	return new Blob([bytes], { type: "image/png" });
@@ -62,6 +59,11 @@ async function readApiResponse<T>(response: Response): Promise<T> {
 		throw new Error(`${response.status} ${message}`);
 	}
 	return body as T;
+}
+
+async function sha256Hex(file: File): Promise<string> {
+	const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+	return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 async function requestApi<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -96,19 +98,50 @@ export default function App() {
 	const [lookupFingerprint, setLookupFingerprint] = useState("");
 	const [verification, setVerification] = useState<VerificationResult | null>(null);
 	const [artifactToVerify, setArtifactToVerify] = useState<File | null>(null);
+	const [verificationReferences, setVerificationReferences] = useState<Record<string, VerificationReference>>({});
+	const [selectedArtifactHash, setSelectedArtifactHash] = useState("");
 	const [certificate, setCertificate] = useState<CertificateResult | null>(null);
+	const [certificateBusy, setCertificateBusy] = useState(false);
 	const [downloadMessage, setDownloadMessage] = useState("");
 	const [mutationToken, setMutationToken] = useState("");
 	const [newOwner, setNewOwner] = useState("");
+	const artifactSelectionVersion = useRef(0);
+
+	useEffect(() => {
+		setVerificationReferences(loadVerificationReferences());
+	}, []);
 
 	function onFileChange(event: ChangeEvent<HTMLInputElement>) {
 		setFile(event.target.files?.[0] ?? null);
 		setResult(null);
 		setVerification(null);
 		setArtifactToVerify(null);
+		setSelectedArtifactHash("");
 		setCertificate(null);
 		setDownloadMessage("");
 		setError("");
+	}
+
+	async function onArtifactToVerifyChange(event: ChangeEvent<HTMLInputElement>) {
+		const selectionVersion = ++artifactSelectionVersion.current;
+		const selectedFile = event.target.files?.[0] ?? null;
+		setArtifactToVerify(selectedFile);
+		setSelectedArtifactHash("");
+		setVerification(null);
+		setError("");
+		if (!selectedFile) {
+			setSelectedArtifactHash("");
+			return;
+		}
+		try {
+			const selectedHash = await sha256Hex(selectedFile);
+			if (selectionVersion === artifactSelectionVersion.current) setSelectedArtifactHash(selectedHash);
+		} catch (hashError) {
+			if (selectionVersion === artifactSelectionVersion.current) {
+				setSelectedArtifactHash("");
+				setError(hashError instanceof Error ? `Unable to inspect the selected artifact: ${hashError.message}` : "Unable to inspect the selected artifact.");
+			}
+		}
 	}
 
 	function downloadProtectedArtifact() {
@@ -130,8 +163,13 @@ export default function App() {
 	}
 
 	async function verifySelectedArtwork() {
-		if (!result?.fingerprint) {
-			setError("Protect an artwork first, then verify the protected artifact.");
+		if (!artifactToVerify) {
+			setError("Select a protected artifact to verify.");
+			return;
+		}
+		const verificationReference = verificationReferences[selectedArtifactHash];
+		if (!verificationReference) {
+			setError("No verification reference available. Protect this artwork first or load its saved reference.");
 			return;
 		}
 		setVerificationBusy(true);
@@ -141,11 +179,12 @@ export default function App() {
 				method: "POST",
 				headers: { "content-type": "application/json" },
 				body: JSON.stringify({
-					imageBase64: await fileAsBase64(artifactToVerify ?? base64AsFile(result.protected_image_base64, "protected.png")),
-					expectedFingerprint: result.fingerprint,
-					expectedWatermark: result.watermark,
-					expectedArtifactHash: result.protected_artifact_hash,
-					metadata: { title, artist },
+					imageBase64: await fileAsBase64(artifactToVerify),
+					watermark: verificationReference.watermark,
+					expectedFingerprint: verificationReference.sourceFingerprint,
+					expectedWatermark: verificationReference.watermark,
+					expectedArtifactHash: verificationReference.protectedArtifactHash,
+					metadata: verificationReference.metadata,
 				}),
 			});
 			setVerification(body);
@@ -175,6 +214,19 @@ export default function App() {
 				}),
 			});
 			setResult(body);
+			const reference: VerificationReference = {
+				sourceFingerprint: body.fingerprint,
+				protectedArtifactHash: body.protected_artifact_hash,
+				watermark: body.watermark,
+				metadata: { title, artist },
+				verificationScope: "protected-artifact",
+			};
+			setVerificationReferences((current) => ({ ...current, [reference.protectedArtifactHash]: reference }));
+			try {
+				saveVerificationReference(reference);
+			} catch {
+				setError("Protection succeeded, but the verification reference could not be saved in this browser.");
+			}
 		} catch (requestError) {
 			setError(requestError instanceof Error ? requestError.message : "Protection request failed");
 		} finally {
@@ -207,6 +259,10 @@ export default function App() {
 			setPhase2Message("Protect the artwork first to obtain its canonical fingerprint.");
 			return;
 		}
+		if (certificateBusy) return;
+		setCertificateBusy(true);
+		setCertificate(null);
+		setPhase2Error(false);
 		try {
 			const body = await phase2Request<CertificateResult>("/api/certificates", {
 				method: "POST",
@@ -220,7 +276,10 @@ export default function App() {
 			setCertificate(body as CertificateResult);
 			setPhase2Message(`Certificate confirmed on chain: token ${body.tokenId}`);
 		} catch (requestError) {
+			setPhase2Error(true);
 			setPhase2Message(requestError instanceof Error ? requestError.message : "Certificate issuance failed");
+		} finally {
+			setCertificateBusy(false);
 		}
 	}
 
@@ -288,8 +347,9 @@ export default function App() {
 					<label>Artist<input value={artist} onChange={(event) => setArtist(event.target.value)} maxLength={200} /></label>
 					<label>Watermark<input value={watermark} onChange={(event) => setWatermark(event.target.value)} maxLength={2048} required /></label>
 					<button type="submit" disabled={busy}>{busy ? "Working..." : "Protect artwork"}</button>
-					<label>Artifact to verify<input type="file" accept="image/png" onChange={(event) => { setArtifactToVerify(event.target.files?.[0] ?? null); setVerification(null); }} /></label>
-					<button className="secondary" type="button" onClick={verifySelectedArtwork} disabled={verificationBusy || !artifactToVerify || !result?.protected_image_base64 || !result.protected_artifact_hash}>{verificationBusy ? "Working..." : "Verify protected artifact"}</button>
+					<label>Artifact to verify<input type="file" accept="image/png" onChange={onArtifactToVerifyChange} /></label>
+					<button className="secondary" type="button" onClick={verifySelectedArtwork} disabled={verificationBusy || !artifactToVerify || !verificationReferences[selectedArtifactHash]}>{verificationBusy ? "Working..." : "Verify protected artifact"}</button>
+					{artifactToVerify && !verificationReferences[selectedArtifactHash] && <p className="muted" role="status">No verification reference available for this artifact. Protect it first or load its saved reference.</p>}
 					{error && <p className="error" role="alert">{error}</p>}
 				</form>
 				<aside className="panel result" aria-live="polite">
@@ -325,7 +385,7 @@ export default function App() {
 					<label>Creator wallet<input value={creator} onChange={(event) => setCreator(event.target.value)} placeholder="0x..." /></label>
 					<label>Metadata hash<input value={metadataHash} onChange={(event) => setMetadataHash(event.target.value)} placeholder="0x + 64 hex characters" /></label>
 					<label>Certificate token ID<input value={certificateTokenId} onChange={(event) => setCertificateTokenId(event.target.value)} /></label>
-										<button type="button" onClick={createCertificate}>Create certificate</button>
+										<button type="button" onClick={createCertificate} disabled={certificateBusy}>{certificateBusy ? "Submitting..." : "Create certificate"}</button>
 					<button type="button" onClick={registerProvenance}>Register provenance</button>
 										{certificate && <dl><dt>Certificate token</dt><dd>{certificate.tokenId}</dd><dt>Transaction</dt><dd>{certificate.transactionHash}</dd><dt>Network</dt><dd>Chain {certificate.chainId}</dd><dt>Contract</dt><dd>{certificate.contractAddress}</dd></dl>}
 					<label>Lookup fingerprint<input value={lookupFingerprint} onChange={(event) => setLookupFingerprint(event.target.value)} placeholder="64 hex characters" /></label>

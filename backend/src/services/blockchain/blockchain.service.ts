@@ -46,10 +46,11 @@ export function canonicalMetadata(metadata: Record<string, unknown>): string {
 }
 
 export function validateCertificateRequest(request: CertificateRequest): { artworkHash: string; metadataHash: string } {
-	if (!isAddress(request.recipient)) throw new CertificateValidationError("recipient must be a valid wallet address");
+	if (!request || typeof request !== "object") throw new CertificateValidationError("certificate request must be an object");
+	if (!isAddress(request.recipient) || request.recipient === "0x0000000000000000000000000000000000000000") throw new CertificateValidationError("recipient must be a non-zero wallet address");
 	if (!/^[a-f0-9]{64}$/i.test(request.artworkFingerprint)) throw new CertificateValidationError("artworkFingerprint must be a SHA-256 hex digest");
 	if (!request.metadata || typeof request.metadata !== "object" || Array.isArray(request.metadata)) throw new CertificateValidationError("metadata must be an object");
-	if (typeof request.metadataUri !== "string" || request.metadataUri.length < 1 || request.metadataUri.length > 2048) throw new CertificateValidationError("metadataUri is required and must be at most 2048 characters");
+	if (typeof request.metadataUri !== "string" || request.metadataUri.length < 1 || request.metadataUri.length > 2048 || !/^[a-z][a-z0-9+.-]*:/i.test(request.metadataUri)) throw new CertificateValidationError("metadataUri must be a bounded URI with a scheme");
 	const metadataJson = canonicalMetadata(request.metadata);
 	return { artworkHash: `0x${request.artworkFingerprint.toLowerCase()}`, metadataHash: keccak256(toUtf8Bytes(metadataJson)) };
 }
@@ -61,7 +62,8 @@ export function createConfiguredCertificateClient(): CertificateClient & { contr
 	if (!rpcUrl || !contractAddress || !privateKey) throw new BlockchainConfigurationError("blockchain certificate configuration is incomplete");
 	if (!isAddress(contractAddress)) throw new BlockchainConfigurationError("CERTIFICATE_CONTRACT_ADDRESS is invalid");
 	const provider = new JsonRpcProvider(rpcUrl);
-	const signer = new Wallet(privateKey, provider);
+	let signer: Wallet;
+	try { signer = new Wallet(privateKey, provider); } catch { throw new BlockchainConfigurationError("CERTIFICATE_SIGNER_PRIVATE_KEY is invalid"); }
 	const contract = new Contract(contractAddress, CERTIFICATE_ABI, signer);
 	return {
 		contractAddress,

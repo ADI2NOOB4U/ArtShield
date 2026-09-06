@@ -44,10 +44,14 @@ def analyze_prompt(value: str, policy: str = "WARN") -> PromptDecision:
     signals = [name for name, pattern in PATTERNS.items() if pattern.search(normalized)]
     try:
         decoded = base64.b64decode(normalized, validate=True).decode("utf-8") if len(normalized) % 4 == 0 else ""
-    except (binascii.Error, UnicodeDecodeError):
+    except (binascii.Error, UnicodeError, ValueError):
         decoded = ""
     if decoded and any(pattern.search(decoded) for pattern in PATTERNS.values()):
         signals.append("encoded_instruction")
-    score = min(1.0, len(signals) * 0.25 + (0.15 if any(unicodedata.name(char, "").startswith("CYRILLIC") for char in normalized) else 0))
+    has_cyrillic = any(unicodedata.name(char, "").startswith("CYRILLIC") for char in normalized)
+    has_latin = any(unicodedata.name(char, "").startswith("LATIN") for char in normalized)
+    if has_cyrillic and has_latin:
+        signals.append("mixed_script")
+    score = min(1.0, len(signals) * 0.25 + (0.15 if "mixed_script" in signals else 0))
     decision = "SAFE" if not signals else ("BLOCKED" if policy == "BLOCK" else "SUSPICIOUS")
     return PromptDecision(policy=policy, normalized=normalized, risk_score=score, signals=tuple(signals), reason_codes=tuple(signals))

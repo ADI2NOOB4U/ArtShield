@@ -34,6 +34,7 @@ describe("ArtShieldOwnership", function () {
     await expect(contract.connect(artist).transferArtwork(artworkHash, buyer.address))
       .to.emit(contract, "OwnershipTransferredForArtwork");
     expect(await contract.currentOwner(artworkHash)).to.equal(buyer.address);
+    expect((await contract.provenance(artworkHash)).length).to.equal(2);
     await expect(contract.connect(artist).transferArtwork(artworkHash, other.address))
       .to.be.revertedWithCustomError(contract, "UnauthorizedOwner");
   });

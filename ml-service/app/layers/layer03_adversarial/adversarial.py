@@ -11,9 +11,9 @@ MAX_DELTA = 2
 
 
 def apply_perturbation(image: Image.Image, seed: str, strength: int = 1) -> Image.Image:
-    if not seed or len(seed) > 128:
+    if not isinstance(seed, str) or not seed or len(seed) > 128:
         raise ValueError("seed must be a non-empty bounded string")
-    if strength not in range(1, MAX_DELTA + 1):
+    if isinstance(strength, bool) or not isinstance(strength, int) or strength not in range(1, MAX_DELTA + 1):
         raise ValueError("strength must be 1 or 2")
     digest = hashlib.sha256(seed.encode("utf-8")).digest()
     random = np.random.default_rng(int.from_bytes(digest[:8], "big"))

@@ -11,7 +11,7 @@ describe("ArtShieldCertificate", function () {
   }
 
   it("issues a provenance-bound ERC-721 certificate", async function () {
-    const { contract, artist } = await deployed();
+    const { contract, artist, other } = await deployed();
     const artworkHash = ethers.keccak256(ethers.toUtf8Bytes("artwork"));
     const metadataHash = ethers.keccak256(ethers.toUtf8Bytes("metadata"));
 
@@ -26,6 +26,7 @@ describe("ArtShieldCertificate", function () {
     expect(certificate.artworkHash).to.equal(artworkHash);
     expect(certificate.metadataHash).to.equal(metadataHash);
     expect(certificate.creator).to.equal(artist.address);
+    expect((await contract.connect(other).certificate(1)).artworkHash).to.equal(artworkHash);
   });
 
   it("rejects duplicate artwork certificates and unauthorized issuance", async function () {
@@ -45,5 +46,10 @@ describe("ArtShieldCertificate", function () {
     const metadataHash = ethers.keccak256(ethers.toUtf8Bytes("metadata"));
     await expect(contract.issueCertificate(artist.address, ethers.ZeroHash, metadataHash, "uri"))
       .to.be.revertedWithCustomError(contract, "EmptyArtworkHash");
+  });
+
+  it("rejects unknown certificate records", async function () {
+    const { contract } = await deployed();
+    await expect(contract.certificate(1)).to.be.revertedWithCustomError(contract, "CertificateNotFound");
   });
 });

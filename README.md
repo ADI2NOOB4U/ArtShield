@@ -9,33 +9,23 @@ With Node.js and PowerShell available, run the complete local Hardhat HTTP workf
 ```
 
 The script starts a local Hardhat node, deploys the phase-two contracts, runs certificate, artwork ownership, and usage-rights routes against the live chain, and stops the node when it finishes. It uses only Hardhat's documented local test account and a local demo bearer token.
-# ArtShield: Multi-Layer AI-Resistant Art Protection & Poisoning System
+# ArtShield: Local Art Integrity Prototype and Security Research
 
 ## Project Status
 
-**Phase 0 — Repository scaffolding and architecture definition.**
+**Current status — local exhibition prototype with controlled research layers.**
 
-ArtShield is in its initial scaffolding phase. This phase establishes the repository layout, service boundaries, and target architecture. As of Phase 0:
-
-- No application feature is implemented.
-- No security layer (of the 15 described below) is implemented.
-- No API endpoint, smart contract, or ML pipeline is implemented.
-- No production service is running or deployed.
-- The only running infrastructure is local development infrastructure: PostgreSQL and Redis, via the root `docker-compose.yml`.
-
-Everything else in this document describes the **target** design that the current scaffold is being built toward, unless explicitly marked as part of the **current scaffold**.
+The repository contains a working local image-integrity flow (L1-L5), local certificate/ownership/rights contracts and backend routes, and defensive/research-only L8-L15 endpoints. It is not a production deployment. PostgreSQL, Redis, IPFS, external model serving, mainnet deployment, and wallet-based frontend signing are not part of the verified core demo.
 
 ## Overview
 
-**ArtShield** is a planned cybersecurity platform intended to protect digital artwork against AI-driven threats, forgery, and unauthorized reuse. The design combines cryptographic fingerprinting, steganographic watermarking, adversarial ML techniques, blockchain-backed ownership verification, and model poisoning mechanisms into a multi-layered defense ecosystem for artists and creators.
+**ArtShield** is a local prototype for artwork integrity evidence, provenance demonstrations, and bounded security research. It combines cryptographic fingerprinting, steganographic watermarking, deterministic perturbation, local blockchain records, and synthetic experiments.
 
-Once built, ArtShield is intended to provide:
-- **Cryptographic proof of authenticity** via distributed ownership ledgers
-- **AI-resistant watermarking** through adversarial perturbation and steganography
-- **Forgery detection** using ML classifiers
-- **Data poisoning** to contaminate unauthorized training datasets
-- **Blockchain integration** for immutable ownership and usage rights
-- **IPFS decentralized storage** for artwork distribution and integrity
+The verified local prototype currently provides:
+- **Metadata-bound SHA-256 fingerprints**, bounded LSB watermarking, and deterministic perturbation
+- **Integrity/tamper assessment**, not a trained forgery classifier
+- **Local Hardhat certificate, ownership, provenance, and usage-rights flows** through authenticated backend routes
+- **Synthetic research-only L8-L12 measurements** and defensive L13-L15 analysis endpoints
 
 ## Problem
 
@@ -60,7 +50,7 @@ ArtShield is designed around a **15-layer security framework** combining:
 - **Detection & Analysis**: Forgery classification and polyglot bomb detection
 - **Ownership & Rights**: NFT certificates of authenticity, distributed ledgers, and smart contract-based licensing
 
-The system is designed to be modular and independently deployable per service (frontend, backend, ML service, blockchain), with an MVP scope targeting Layers 1–5 and a longer-term roadmap covering the full 15-layer architecture. All of this is design intent — none of it is built yet.
+The system is modular across the frontend, backend, ML service, and local blockchain. Production deployment, external model evaluation, IPFS storage, wallet signing, and mainnet security remain unverified.
 
 ## Target Architecture
 
@@ -100,11 +90,11 @@ The system is designed to be modular and independently deployable per service (f
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-PostgreSQL and Redis are the only components currently running, via the root `docker-compose.yml`. Frontend, backend business logic, ML pipeline logic, blockchain contracts, and IPFS integration are scaffolded as empty or near-empty directory structures, not running services.
+PostgreSQL and Redis can be started via the root `docker-compose.yml`. The frontend, backend, ML service, and local Hardhat contracts are runnable through their service-specific commands; IPFS and production container integration remain outside the verified core demo.
 
 ## Intended Data Flow
 
-This describes the target end-to-end flow once the corresponding layers are built. **None of it is implemented yet.**
+This describes the target end-to-end flow. The verified local path covers protection, verification, certificate issuance, ownership, and usage-rights operations; production storage, model serving, and deployment integrations remain outside the verified core demo.
 
 1. **Upload**: Artist uploads artwork → Frontend validates → Backend stores metadata
 2. **Protection**: ML service applies security layers → Fingerprint + watermark + blockchain certificate generated
@@ -116,26 +106,26 @@ This describes the target end-to-end flow once the corresponding layers are buil
 
 The stack below reflects the intended tooling per service. Presence in this list does not imply the integration is built — see [Project Status](#project-status) and [Repository Structure](#repository-structure) for what currently exists.
 
-### Frontend (planned)
+### Frontend (local exhibition client)
 - React with TypeScript
 - Vite for development and builds
 - Tailwind CSS
 - Axios for API communication
 - Web3.js for blockchain interaction
 
-### Backend (scaffolded — see Repository Structure)
+### Backend (local exhibition service)
 - Node.js, Express, TypeScript
 - PostgreSQL for relational data
 - Redis for caching and session state
 - JWT for authentication (planned)
 
-### ML Service (scaffolded — see Repository Structure)
+### ML Service (local protection and research service)
 - Python, FastAPI
 - PyTorch for adversarial ML and neural networks (planned)
 - OpenCV, Pillow for image processing (planned)
 - NumPy, SciPy, scikit-learn (planned)
 
-### Blockchain & Smart Contracts (scaffolded — see Repository Structure)
+### Blockchain & Smart Contracts (local Hardhat implementation)
 - Solidity
 - Hardhat for contract development and testing
 - ethers.js for contract interaction (planned)
@@ -148,75 +138,75 @@ The stack below reflects the intended tooling per service. Presence in this list
 
 ## 15 Security Layers
 
-ArtShield is designed around a 15-layer defense system. These are **design targets**. No layer is implemented. The MVP scope targets Layers 1–5.
+ArtShield is organized around 15 layer names. The statuses below describe the verified local implementation, not production capability.
 
 Layers 1, 2, 3, 5, and 8–15 map to planned modules under `ml-service/app/layers/`. Layers 4, 6, and 7 are ownership/rights layers that belong to the blockchain and backend services rather than the ML service.
 
 ### Layer 1: Cryptographic Fingerprinting (MVP scope)
-Will generate cryptographic hash fingerprints of artwork using SHA-256 with metadata binding, providing tamper-evident proof of authenticity and integrity verification without storing full images.
-**Status**: Planned · **Scaffold**: `ml-service/app/layers/layer01_fingerprint/`
+SHA-256 fingerprints are bound to canonical metadata.
+**Status**: Implemented locally · **Scope**: integrity evidence, not legal authenticity
 
 ### Layer 2: Steganographic Watermarking (MVP scope)
-Will embed invisible watermarks into image pixel data using LSB steganography, intended to survive compression and minor transformations.
-**Status**: Planned · **Scaffold**: `ml-service/app/layers/layer02_steganography/`
+Bounded RGB LSB watermarking includes a checksum and capacity validation.
+**Status**: Implemented locally · **Limitation**: not claimed compression-proof
 
 ### Layer 3: Adversarial Perturbation Shield (MVP scope)
-Will inject imperceptible adversarial perturbations into artwork to interfere with ML model inference while preserving visual quality.
-**Status**: Planned · **Scaffold**: `ml-service/app/layers/layer03_adversarial/`
+Uses deterministic bounded pixel perturbation for local research/defensive testing.
+**Status**: Implemented locally · **Limitation**: not proven against external models
 
-### Layer 4: NFT Certificate of Authenticity (MVP scope)
-Will mint NFTs representing verifiable ownership and provenance records.
-**Status**: Planned · **Scaffold**: `blockchain/contracts/` (no contract implemented yet)
+### Layer 4: Certificate of Authenticity (MVP scope)
+Local Hardhat ERC-721 certificates bind artwork and metadata hashes.
+**Status**: Implemented locally · **Limitation**: no mainnet/decentralization claim
 
 ### Layer 5: Forgery Detection (MVP scope)
-Will train a supervised ML classifier to detect forged/fake artwork based on fingerprint mismatches and visual artifacts.
-**Status**: Planned · **Scaffold**: `ml-service/app/layers/layer05_forgery/`
+Performs explainable fingerprint, watermark, and protected-artifact integrity assessment.
+**Status**: Implemented locally · **Limitation**: not a trained ML classifier
 
 ---
 
-### Layer 6: Distributed Ownership Ledger
-Will maintain a cryptographic ledger of ownership transfers and rights assignments.
-**Status**: Planned · **Scaffold**: `database/schema/`, `backend/src/services/blockchain/` (not implemented)
+### Layer 6: Ownership Ledger
+Local Hardhat ownership registration, transfer, and provenance routes are implemented.
+**Status**: Implemented locally · **Limitation**: local chain only
 
 ### Layer 7: Usage Rights Token
-Will implement a token-based licensing model for artwork usage, enabling royalty distribution and usage tracking.
-**Status**: Planned · **Scaffold**: `blockchain/contracts/` (no contract implemented yet)
+Local non-transferable rights tokens support masks, expiry, conflict checks, and revocation.
+**Status**: Implemented locally · **Limitation**: no royalty/IPFS/mainnet integration
 
 ### Layer 8: Model Poisoning Injection
-Will inject data poisoning triggers into artwork to corrupt downstream ML models trained on poisoned data.
-**Status**: Planned · **Scaffold**: `ml-service/app/layers/layer08_model_poisoning/`
+Controlled seeded synthetic poisoning experiment.
+**Status**: Research-only implemented · **No production artwork injection**
 
 ### Layer 9: Backdoor Trigger Installation
-Will embed hidden backdoor triggers intended to cause model misbehavior when the pattern is detected.
-**Status**: Planned · **Scaffold**: `ml-service/app/layers/layer09_backdoor/`
+Controlled seeded synthetic trigger experiment.
+**Status**: Research-only implemented · **No real-world claim**
 
 ### Layer 10: Feature Space Poisoning
-Will poison learned feature representations in embedding spaces to degrade transfer learning quality.
-**Status**: Planned · **Scaffold**: `ml-service/app/layers/layer10_feature_poisoning/`
+Controlled feature-displacement measurements using synthetic pixel-vector proxies.
+**Status**: Research-only implemented · **No learned embedding claim**
 
 ### Layer 11: Gradient-Based Adversarial Contamination
-Will use gradient-based optimization to generate adversarial samples intended to maximize model loss when trained on the data.
-**Status**: Planned · **Scaffold**: `ml-service/app/layers/layer11_gradient_poisoning/`
+Controlled clean-versus-contaminated gradient comparison.
+**Status**: Research-only implemented · **No deployed-model claim**
 
 ### Layer 12: Data Poisoning Signature
-Will create a signature of poisoning artifacts detectable in model weights post-training.
-**Status**: Planned · **Scaffold**: `ml-service/app/layers/layer12_poison_signature/`
+Finite, shape-checked signature displacement inspection.
+**Status**: Research-only implemented · **No model-weight detector claim**
 
 ### Layer 13: Model Inversion Defense
-Will aim to prevent extraction of training data from trained models through differential privacy and gradient clipping.
-**Status**: Planned · **Scaffold**: `ml-service/app/layers/layer13_model_inversion/`
+Process-local query counting, rate limiting, input validation, and confidence suppression.
+**Status**: Defensive endpoint implemented · **No privacy-proof claim**
 
 ### Layer 14: Prompt Injection Vaccine
-Will inject adversarial prompts and jailbreak-resistant examples into training data to make downstream models more resistant to prompt injection attacks.
-**Status**: Planned · **Scaffold**: `ml-service/app/layers/layer14_prompt_vaccine/`
+Bounded normalization and heuristic prompt signal analysis.
+**Status**: Defensive endpoint implemented · **No universal detection claim**
 
 ### Layer 15: Polyglot Bomb Detection
-Will detect and analyze malicious polyglot files (e.g., image + executable) and embedded malware signatures.
-**Status**: Planned · **Scaffold**: `ml-service/app/layers/layer15_polyglot/`
+Bounded in-memory magic-byte, MIME, archive, embedded-signature, and trailing-data checks.
+**Status**: Defensive endpoint implemented · **Not a malware sandbox**
 
 ## Repository Structure
 
-This reflects the current Phase 0 scaffold. Directories exist as structural placeholders for planned code unless otherwise noted.
+This reflects the local prototype structure. Empty modules and adapters remain explicit placeholders where noted above.
 
 ```
 ArtShield/
@@ -297,9 +287,9 @@ Note: `ml-service/Dockerfile` (under the ML service itself) and `docker/ml-servi
 
 ## Development Strategy
 
-### MVP Phase (Layers 1–5) — not started
+### MVP Phase (Layers 1–5) — implemented locally
 **Objective**: Core protection and detection
-**Planned deliverables**:
+**Verified local deliverables**:
 - Cryptographic fingerprinting + verification
 - Steganographic watermarking + extraction
 - Adversarial perturbation injection
@@ -307,39 +297,39 @@ Note: `ml-service/Dockerfile` (under the ML service itself) and `docker/ml-servi
 - Forgery detection classifier
 - End-to-end web interface
 
-### Phase 2: Distributed Rights (Layers 6–7) — not started
+### Phase 2: Local Rights (Layers 6–7) — implemented locally
 - Ownership ledger implementation
 - Usage rights token smart contracts
 - License management UI
 - Royalty distribution logic
 
-### Phase 3: Poisoning Mechanisms (Layers 8–12) — not started
+### Phase 3: Poisoning Mechanisms (Layers 8–12) — research-only
 - Model poisoning injection (targeted, feature space, gradient-based)
 - Backdoor trigger installation
 - Poisoning signature generation
 - Adversarial contamination metrics
 
-### Phase 4: Advanced Defenses (Layers 13–15) — not started
+### Phase 4: Advanced Defenses (Layers 13–15) — defensive endpoints
 - Model inversion defense (differential privacy)
 - Prompt injection vaccines
 - Polyglot bomb detection
 
 ## Environment Configuration
 
-Configuration is intended to be defined in `.env`, based on `.env.example` at the repository root. As of Phase 0, only the values needed to run PostgreSQL and Redis via `docker-compose.yml` are relevant; application-level variables (JWT secrets, blockchain RPC keys, IPFS/Pinata keys, etc.) are placeholders for future phases and are not consumed by any running service yet.
+Configuration is defined in `.env`, based on `.env.example` at the repository root. Local application variables include ML and Hardhat endpoints, signer configuration, and the mutation token; production secrets, IPFS keys, and external service configuration are not part of the verified demo.
 
 ## Prerequisites
 
-- **Node.js 18+** (frontend & backend, once implemented)
-- **Python 3.9+** (ML service, once implemented)
+- **Node.js 18+** (frontend, backend, and blockchain tooling)
+- **Python 3.9+** (ML service)
 - **Docker & Docker Compose** (for the current PostgreSQL + Redis dev infrastructure)
 - **Git**
 
-Blockchain tooling (Hardhat) and a local Ethereum node are only relevant once contract development begins; the local RPC (`http://localhost:8545`) is not running in Phase 0.
+Blockchain tooling (Hardhat) and a local Ethereum node are required for the real local blockchain E2E; the E2E script starts and stops the local RPC (`http://localhost:8545`) automatically.
 
 ## Local Development
 
-At Phase 0, the only component that can actually be started is the shared development infrastructure (PostgreSQL and Redis).
+The shared development infrastructure and the verified local application services can be started independently.
 
 ### Start development infrastructure
 
@@ -353,15 +343,15 @@ This starts:
 
 ### Application services
 
-`frontend/`, `backend/`, and `ml-service/` are scaffolded directory structures. They do not yet contain a runnable application, so there are no working `npm run dev` or `uvicorn` commands to document at this stage. Once each service has a minimal implementation, its own startup instructions (targeting ports 5173, 3000, and 8000 respectively) will be added here.
+`frontend/`, `backend/`, and `ml-service/` contain the verified local application path. Use `npm run dev` in `frontend`, `npm run dev` in `backend`, and `python -m uvicorn app.main:app --reload --port 8000` from `ml-service` for local development.
 
 ### Blockchain
 
-`blockchain/` contains a Hardhat project skeleton (`hardhat.config.ts`, `package.json`, and empty `contracts/`, `scripts/`, `test/`, `deployments/`, `abi/` directories). No contracts are written yet, so there is nothing to compile, test, or deploy at this stage.
+`blockchain/` contains the Hardhat contracts, deployment scripts, tests, and generated local deployment metadata used by the Phase 2 E2E.
 
 ## Testing
 
-`ml-service/tests/` and the root `tests/` directory exist as scaffolds for future unit and integration tests. `blockchain/test/` exists as a scaffold for future Hardhat contract tests. No test suites currently exist in any of these directories.
+`ml-service/tests/`, `backend/tests/`, `frontend/tests/`, and `blockchain/test/` contain the local regression suites. The root `tests/` directory is reserved for broader cross-service coverage.
 
 ## Docker
 
@@ -377,11 +367,11 @@ To start what currently runs:
 docker compose up -d
 ```
 
-Building or running the per-service Dockerfiles under `docker/` is not yet supported end-to-end, since the applications they would containerize are not implemented.
+Building or running the per-service Dockerfiles under `docker/` is not part of the verified exhibition path and still requires deployment wiring.
 
 ## Security Design Principles
 
-The following are intended principles for each component once implemented. They describe design intent, not a current security posture, since no application code exists yet.
+The following are intended principles for each component. They describe design intent and remaining production hardening, not a claim of production security.
 
 ### Code Security (planned)
 - Server-side input validation

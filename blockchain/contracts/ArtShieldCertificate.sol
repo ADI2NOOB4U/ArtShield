@@ -20,6 +20,7 @@ contract ArtShieldCertificate is ERC721URIStorage, Ownable {
     error ArtworkAlreadyCertified(bytes32 artworkHash);
     error EmptyArtworkHash();
     error EmptyMetadataHash();
+    error CertificateNotFound(uint256 tokenId);
 
     event CertificateIssued(
         uint256 indexed tokenId,
@@ -56,7 +57,7 @@ contract ArtShieldCertificate is ERC721URIStorage, Ownable {
     }
 
     function certificate(uint256 tokenId) external view returns (Certificate memory) {
-        _requireOwned(tokenId);
+        if (_certificates[tokenId].creator == address(0)) revert CertificateNotFound(tokenId);
         return _certificates[tokenId];
     }
 

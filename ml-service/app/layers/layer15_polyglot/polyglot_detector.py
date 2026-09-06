@@ -11,7 +11,7 @@ SIGNATURES = {
     "jpeg": b"\xff\xd8\xff",
     "gif": b"GIF8",
     "pdf": b"%PDF-",
-    "zip": b"PK\x03\x04",
+    "zip": (b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08"),
     "exe": b"MZ",
 }
 
@@ -26,6 +26,8 @@ class FileSecurityResult:
 
 
 def _extension(filename: str) -> str:
+    if not isinstance(filename, str) or not filename:
+        raise ValueError("filename must be a non-empty simple basename")
     name = PurePath(filename).name
     if name != filename or "\x00" in filename:
         raise ValueError("filename must be a simple basename")
@@ -37,11 +39,13 @@ def analyze_file(data: bytes, filename: str, declared_mime: str | None = None) -
         raise ValueError("file data is empty")
     if len(data) > MAX_BYTES:
         raise ValueError("file exceeds the 10 MiB limit")
+    if declared_mime is not None and (not isinstance(declared_mime, str) or not declared_mime):
+        raise ValueError("declared_mime must be a non-empty string")
     extension = _extension(filename)
-    matches = [name for name, signature in SIGNATURES.items() if data.startswith(signature)]
+    matches = [name for name, signatures in SIGNATURES.items() if any(data.startswith(signature) for signature in signatures if isinstance(signatures, tuple)) or (isinstance(signatures, bytes) and data.startswith(signatures))]
     detected = matches[0] if matches else None
     signals: list[str] = []
-    embedded = [name for name, signature in SIGNATURES.items() if data.find(signature, 1, min(len(data), 1_048_576)) >= 0]
+    embedded = [name for name, signatures in SIGNATURES.items() if any(data.find(signature, 1, min(len(data), 1_048_576)) >= 0 for signature in (signatures if isinstance(signatures, tuple) else (signatures,)))]
     if embedded:
         signals.append("embedded_conflicting_signature")
     if len(matches) > 1:

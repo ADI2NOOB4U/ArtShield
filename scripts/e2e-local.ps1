@@ -2,6 +2,18 @@ $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
 $nodeProcess = $null
+$environmentNames = @(
+    "ARTSHIELD_E2E_BLOCKCHAIN",
+    "BLOCKCHAIN_RPC_URL",
+    "CERTIFICATE_CONTRACT_ADDRESS",
+    "OWNERSHIP_CONTRACT_ADDRESS",
+    "RIGHTS_CONTRACT_ADDRESS",
+    "CERTIFICATE_SIGNER_PRIVATE_KEY",
+    "ARTSHIELD_MUTATION_TOKEN",
+    "ARTSHIELD_MUTATION_ROLE"
+)
+$previousEnvironment = @{}
+foreach ($name in $environmentNames) { $previousEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, "Process") }
 
 try {
     Push-Location $root
@@ -39,5 +51,9 @@ try {
     if ($nodeProcess) { Stop-Process -Id $nodeProcess.Id -Force -ErrorAction SilentlyContinue }
     $rpcProcessId = (Get-NetTCPConnection -LocalPort 8545 -State Listen -ErrorAction SilentlyContinue).OwningProcess
     if ($rpcProcessId) { Stop-Process -Id $rpcProcessId -Force -ErrorAction SilentlyContinue }
+    foreach ($name in $environmentNames) {
+        if ($null -eq $previousEnvironment[$name]) { Remove-Item "Env:$name" -ErrorAction SilentlyContinue }
+        else { Set-Item "Env:$name" $previousEnvironment[$name] }
+    }
     while ((Get-Location).Path -ne $root) { Pop-Location }
 }

@@ -48,6 +48,7 @@ contract ArtShieldOwnership is Ownable {
 		address previousOwner = record.currentOwner;
 		record.currentOwner = newOwner;
 		emit OwnershipTransferredForArtwork(artworkHash, previousOwner, newOwner);
+		_provenance[artworkHash].push(record.metadataHash);
 		emit ProvenanceRecorded(artworkHash, record.metadataHash, msg.sender, keccak256(abi.encodePacked(previousOwner, newOwner, block.number)));
 	}
 

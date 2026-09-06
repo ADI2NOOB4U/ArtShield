@@ -9,6 +9,7 @@ from app.layers.layer01_fingerprint.fingerprint import create_fingerprint
 from app.layers.layer02_steganography.steganography import WatermarkError, embed_watermark, extract_watermark
 from app.layers.layer03_adversarial.adversarial import apply_perturbation
 from app.layers.layer05_forgery.forgery import assess_forgery
+from app.research.layer3_evaluation import evaluate_layer3
 from app.utils.image_utils import InvalidImage, encode_png, open_image
 
 
@@ -42,6 +43,37 @@ class PhaseOneLayerTests(unittest.TestCase):
         second = apply_perturbation(image, "fingerprint", strength=1)
         self.assertEqual(list(first.get_flattened_data()), list(second.get_flattened_data()))
         self.assertTrue(all(abs(a - b) <= 1 for left, right in zip(image.get_flattened_data(), first.get_flattened_data()) for a, b in zip(left[:3], right[:3])))
+        with self.assertRaises(ValueError):
+            apply_perturbation(image, 1)
+        with self.assertRaises(ValueError):
+            apply_perturbation(image, "seed", True)
+
+    def test_perturbation_changes_with_seed_and_preserves_shape(self):
+        image = open_image(self.make_image((32, 48)))
+        first = apply_perturbation(image, "seed-a", strength=2)
+        second = apply_perturbation(image, "seed-b", strength=2)
+        self.assertEqual(first.size, image.size)
+        self.assertEqual(first.mode, "RGBA")
+        self.assertNotEqual(list(first.get_flattened_data()), list(second.get_flattened_data()))
+        self.assertTrue(all(abs(a - b) <= 2 for left, right in zip(image.get_flattened_data(), first.get_flattened_data()) for a, b in zip(left[:3], right[:3])))
+
+    def test_layer3_evaluation_is_reproducible_and_bounded(self):
+        first = evaluate_layer3(seed=11, samples_per_class=16, sample_index=0, strength=1)
+        second = evaluate_layer3(seed=11, samples_per_class=16, sample_index=0, strength=1)
+        self.assertEqual(first["protected_sha256"], second["protected_sha256"])
+        self.assertTrue(first["reproducible"])
+        self.assertLessEqual(first["linf"], 1 / 255)
+        self.assertEqual(first["image_shape"], [16, 16])
+        self.assertIn("baseline_loss", first)
+        self.assertIn("adversarial_loss", first)
+        with self.assertRaises(ValueError):
+            evaluate_layer3(samples_per_class=3)
+        with self.assertRaises(ValueError):
+            evaluate_layer3(epsilon=3 / 255)
+        with self.assertRaises(ValueError):
+            evaluate_layer3(seed=True)
+        with self.assertRaises(ValueError):
+            evaluate_layer3(sample_index=0.5)
 
     def test_forgery_assessment_detects_tampered_metadata(self):
         image = self.make_image()

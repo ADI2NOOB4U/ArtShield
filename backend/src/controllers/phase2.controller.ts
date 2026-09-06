@@ -9,6 +9,7 @@ import {
 	revokeRights,
 	verifyRights,
 	Phase2BlockchainError,
+	Phase2ConflictError,
 	Phase2ConfigurationError,
 	Phase2ValidationError,
 } from "../services/blockchain/phase2.service.js";
@@ -17,6 +18,7 @@ function handle(error: unknown, response: Response): void {
 	if (error instanceof Phase2ValidationError) { response.status(422).json({ error: error.message }); return; }
 	if (error instanceof Phase2ConfigurationError) { response.status(503).json({ error: "Phase 2 blockchain service is not configured" }); return; }
 	if (error instanceof Phase2BlockchainError) { response.status(502).json({ error: error.message }); return; }
+	if (error instanceof Phase2ConflictError) { response.status(409).json({ error: error.message }); return; }
 	response.status(502).json({ error: "blockchain operation failed" });
 }
 

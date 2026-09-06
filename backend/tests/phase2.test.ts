@@ -55,8 +55,22 @@ describe("Phase 2 backend boundary", () => {
     assert.equal(response.status, 422);
     const rightsResponse = await fetch(`${address}/api/rights`, { method: "POST", headers: authHeaders, body: JSON.stringify({ artworkFingerprint: fingerprint, grantee: "0x0000000000000000000000000000000000000000", rightsMask: 0, metadataUri: "" }) });
     assert.equal(rightsResponse.status, 422);
+    const missingRights = await fetch(`${address}/api/rights`, { method: "POST", headers: authHeaders, body: JSON.stringify({}) });
+    assert.equal(missingRights.status, 422);
+    const invalidRightsUri = await fetch(`${address}/api/rights`, { method: "POST", headers: authHeaders, body: JSON.stringify({ artworkFingerprint: fingerprint, grantee, rightsMask: 1, metadataUri: "not-a-uri" }) });
+    assert.equal(invalidRightsUri.status, 422);
     const verifyResponse = await fetch(`${address}/api/rights/not-a-token/verify?rightsMask=4`);
     assert.equal(verifyResponse.status, 422);
+    const missingRegistration = await fetch(`${address}/api/artworks/register`, { method: "POST", headers: authHeaders, body: JSON.stringify({}) });
+    assert.equal(missingRegistration.status, 422);
+    const invalidTokenId = await fetch(`${address}/api/artworks/register`, { method: "POST", headers: authHeaders, body: JSON.stringify({ artworkFingerprint: fingerprint, metadataHash, certificateTokenId: "not-a-number", creator }) });
+    assert.equal(invalidTokenId.status, 422);
+    const oversizedTokenId = await fetch(`${address}/api/artworks/register`, { method: "POST", headers: authHeaders, body: JSON.stringify({ artworkFingerprint: fingerprint, metadataHash, certificateTokenId: "1".repeat(80), creator }) });
+    assert.equal(oversizedTokenId.status, 422);
+    const oversizedRightsToken = await fetch(`${address}/api/rights/${"1".repeat(80)}/verify?rightsMask=4`);
+    assert.equal(oversizedRightsToken.status, 422);
+    const missingLookup = await fetch(`${address}/api/artworks/${encodeURIComponent(undefined as never)}`);
+    assert.equal(missingLookup.status, 422);
   });
 
   it("supports ownership transfer through the backend boundary", async () => {

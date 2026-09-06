@@ -5,8 +5,9 @@ from __future__ import annotations
 import base64
 import binascii
 import json
+import re
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
 
 HTTP_422 = getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", 422)
 HTTP_413 = getattr(status, "HTTP_413_CONTENT_TOO_LARGE", 413)
@@ -23,6 +24,7 @@ from app.layers.layer13_model_inversion.model_inversion import PrivacyQueryGuard
 from app.layers.layer14_prompt_vaccine.prompt_vaccine import analyze_prompt
 from app.layers.layer15_polyglot.polyglot_detector import analyze_file
 from app.schemas.phase4 import FileCheckRequest, InversionRequest, PromptRequest
+from app.research.layer3_evaluation import evaluate_layer3
 
 router = APIRouter(prefix="/v1")
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
@@ -51,6 +53,12 @@ def parse_metadata(metadata_json: str) -> dict:
     if not isinstance(metadata, dict):
         raise HTTPException(status_code=HTTP_422, detail="metadata_json must contain an object")
     return metadata
+
+
+def parse_digest(value: str, field_name: str) -> str:
+    if not re.fullmatch(r"[0-9a-fA-F]{64}", value):
+        raise HTTPException(status_code=HTTP_422, detail=f"{field_name} must be a SHA-256 hex digest")
+    return value.lower()
 
 
 @router.get("/health")
@@ -103,6 +111,20 @@ def run_research_experiment(experiment_kind: str, payload: dict) -> dict:
         raise HTTPException(status_code=HTTP_422, detail=str(exc)) from exc
 
 
+@router.post("/research/layer3/evaluate")
+def layer3_evaluation(payload: dict) -> dict:
+    try:
+        return evaluate_layer3(
+            seed=payload.get("seed", 7),
+            samples_per_class=payload.get("samples_per_class", 32),
+            sample_index=payload.get("sample_index", 0),
+            strength=payload.get("strength", 1),
+            epsilon=payload.get("epsilon"),
+        )
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=HTTP_422, detail=str(exc)) from exc
+
+
 @router.post("/protect", response_model=ProtectionResponse)
 async def protect(
     image: UploadFile = File(...),
@@ -129,14 +151,21 @@ async def protect(
 
 @router.post("/verify", response_model=VerificationResponse)
 async def verify(
+    request: Request,
     image: UploadFile = File(...),
     expected_fingerprint: str = Form(..., min_length=64, max_length=64),
     metadata_json: str = Form(...),
-    expected_watermark: str | None = Form(None, max_length=2048),
+    expected_watermark: str | None = Form(None, min_length=1, max_length=2048),
     expected_artifact_hash: str | None = Form(None, min_length=64, max_length=64),
 ) -> VerificationResponse:
     raw = await read_upload(image)
     metadata = parse_metadata(metadata_json)
+    expected_fingerprint = parse_digest(expected_fingerprint, "expected_fingerprint")
+    submitted_form = await request.form()
+    if "expected_watermark" in submitted_form and expected_watermark is None:
+        raise HTTPException(status_code=HTTP_422, detail="expected_watermark must be between 1 and 2048 characters")
+    if expected_artifact_hash is not None:
+        expected_artifact_hash = parse_digest(expected_artifact_hash, "expected_artifact_hash")
     try:
         assessment = assess_forgery(raw, metadata, expected_fingerprint, expected_watermark, expected_artifact_hash)
     except InvalidImage as exc:

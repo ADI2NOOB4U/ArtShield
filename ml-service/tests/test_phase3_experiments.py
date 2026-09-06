@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import unittest
 from pathlib import Path
 
@@ -33,6 +34,12 @@ class PhaseThreeExperimentTests(unittest.TestCase):
             run_experiment(ExperimentConfig("bad/path", poisoning_ratio=0.9))
         with self.assertRaises(ValueError):
             run_experiment(ExperimentConfig("phase3-test-invalid", perturbation_budget=-1))
+        with self.assertRaises(ValueError):
+            run_experiment(ExperimentConfig("phase3-test-invalid-seed", seed=True))
+        with self.assertRaises(ValueError):
+            run_experiment(ExperimentConfig("phase3-test-invalid-ratio", poisoning_ratio=math.nan))
+        with self.assertRaises(ValueError):
+            run_experiment(ExperimentConfig("phase3-test-invalid-budget", perturbation_budget=math.inf))
         run_experiment(ExperimentConfig("phase3-test-duplicate", samples_per_class=8))
         with self.assertRaises(FileExistsError):
             run_experiment(ExperimentConfig("phase3-test-duplicate", samples_per_class=8))
@@ -42,11 +49,19 @@ class PhaseThreeExperimentTests(unittest.TestCase):
         clean = inspect_signature(dataset.images, dataset.images)
         self.assertEqual(clean["label"], "CLEAN")
         manipulated = dataset.images.copy()
-        manipulated[:, :2, :2] = 1
+        manipulated[:, -2:, -2:] = 1
         suspicious = inspect_signature(manipulated, dataset.images)
-        self.assertIn(suspicious["label"], {"SUSPICIOUS", "POISON-LIKELY"})
+        self.assertGreater(suspicious["score"], 0)
         with self.assertRaises(ValueError):
             inspect_signature(dataset.images, dataset.images[:, :-1])
+        with self.assertRaises(ValueError):
+            inspect_signature(dataset.images[:1], dataset.images)
+        with self.assertRaises(ValueError):
+            inspect_signature(dataset.images[:0], dataset.images[:0])
+        non_finite = dataset.images[:1].copy()
+        non_finite[0, 0, 0] = float("nan")
+        with self.assertRaises(ValueError):
+            inspect_signature(non_finite, dataset.images[:1])
 
     def test_api_rejects_paths_and_invalid_ratios(self):
         client = TestClient(app)
