@@ -34,6 +34,8 @@ async function callMl(path, body) {
         form.append("expected_fingerprint", verification.expectedFingerprint);
         if (typeof verification.expectedWatermark === "string")
             form.append("expected_watermark", verification.expectedWatermark);
+        if (typeof verification.expectedArtifactHash === "string" && /^[a-f0-9]{64}$/i.test(verification.expectedArtifactHash))
+            form.append("expected_artifact_hash", verification.expectedArtifactHash);
     }
     const response = await fetch(`${mlServiceUrl}${path}`, { method: "POST", body: form, signal: AbortSignal.timeout(15000) });
     if (!response.ok)

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from app.layers.layer01_fingerprint.fingerprint import verify_fingerprint
 from app.layers.layer02_steganography.steganography import WatermarkError, extract_watermark
 from app.utils.image_utils import encode_png, open_image
+from app.utils.crypto_utils import artifact_hash
 
 
 @dataclass(frozen=True)
@@ -14,6 +15,7 @@ class ForgeryAssessment:
     authentic: bool
     fingerprint_match: bool
     watermark_match: bool | None
+    artifact_hash_match: bool | None
     reasons: tuple[str, ...]
 
 
@@ -22,6 +24,7 @@ def assess_forgery(
     metadata: dict,
     expected_fingerprint: str,
     expected_watermark: str | None = None,
+    expected_artifact_hash: str | None = None,
 ) -> ForgeryAssessment:
     image = open_image(image_bytes)
     fingerprint_match = verify_fingerprint(image_bytes, metadata, expected_fingerprint)
@@ -32,9 +35,12 @@ def assess_forgery(
     except WatermarkError as exc:
         watermark_error = str(exc)
     watermark_match = None if expected_watermark is None else extracted == expected_watermark
+    artifact_hash_match = None if expected_artifact_hash is None else artifact_hash(image_bytes) == expected_artifact_hash.lower()
     reasons: list[str] = []
-    if not fingerprint_match:
+    if expected_artifact_hash is None and not fingerprint_match:
         reasons.append("metadata-bound fingerprint mismatch")
+    if expected_artifact_hash is not None and not artifact_hash_match:
+        reasons.append("protected artifact hash mismatch")
     if expected_watermark is not None and not watermark_match:
         reasons.append("watermark missing or mismatched")
     if watermark_error:
@@ -43,5 +49,6 @@ def assess_forgery(
         authentic=not reasons,
         fingerprint_match=fingerprint_match,
         watermark_match=watermark_match,
+        artifact_hash_match=artifact_hash_match,
         reasons=tuple(reasons),
     )

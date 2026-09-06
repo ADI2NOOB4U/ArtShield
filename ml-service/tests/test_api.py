@@ -55,6 +55,41 @@ class ApiTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 413)
 
+    def test_protected_artifact_verifies_and_tampering_fails(self):
+        protected = self.client.post(
+            "/v1/protect",
+            files={"image": ("art.png", self.image, "image/png")},
+            data={"watermark": "artshield:test", "metadata_json": json.dumps(self.metadata)},
+        ).json()
+        protected_bytes = __import__("base64").b64decode(protected["protected_image_base64"])
+        verified = self.client.post(
+            "/v1/verify",
+            files={"image": ("protected.png", protected_bytes, "image/png")},
+            data={
+                "expected_fingerprint": protected["fingerprint"],
+                "expected_watermark": protected["watermark"],
+                "expected_artifact_hash": protected["protected_artifact_hash"],
+                "metadata_json": json.dumps(self.metadata),
+            },
+        )
+        self.assertEqual(verified.status_code, 200, verified.text)
+        self.assertTrue(verified.json()["authentic"])
+        self.assertEqual(verified.json()["verification_scope"], "protected-artifact")
+        tampered = bytearray(protected_bytes)
+        tampered[-1] ^= 1
+        rejected = self.client.post(
+            "/v1/verify",
+            files={"image": ("tampered.png", bytes(tampered), "image/png")},
+            data={
+                "expected_fingerprint": protected["fingerprint"],
+                "expected_watermark": protected["watermark"],
+                "expected_artifact_hash": protected["protected_artifact_hash"],
+                "metadata_json": json.dumps(self.metadata),
+            },
+        )
+        self.assertEqual(rejected.status_code, 200)
+        self.assertFalse(rejected.json()["authentic"])
+
 
 if __name__ == "__main__":
     unittest.main()

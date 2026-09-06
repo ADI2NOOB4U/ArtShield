@@ -6,6 +6,14 @@ type ProtectionResult = {
 	fingerprint: string;
 	watermark: string;
 	protected_image_base64: string;
+	protected_artifact_hash: string;
+};
+
+type VerificationResult = {
+	authentic: boolean;
+	fingerprint_match: boolean;
+	watermark_match: boolean | null;
+	reasons: string[];
 };
 
 function fileAsBase64(file: File): Promise<string> {
@@ -19,6 +27,11 @@ function fileAsBase64(file: File): Promise<string> {
 		};
 		reader.readAsDataURL(file);
 	});
+}
+
+function base64AsFile(value: string, name: string): File {
+	const bytes = Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
+	return new File([bytes], name, { type: "image/png" });
 }
 
 export default function App() {
@@ -37,11 +50,44 @@ export default function App() {
 	const [rightsTokenId, setRightsTokenId] = useState("");
 	const [phase2Message, setPhase2Message] = useState("");
 	const [lookupFingerprint, setLookupFingerprint] = useState("");
+	const [verification, setVerification] = useState<VerificationResult | null>(null);
+	const [artifactToVerify, setArtifactToVerify] = useState<File | null>(null);
 
 	function onFileChange(event: ChangeEvent<HTMLInputElement>) {
 		setFile(event.target.files?.[0] ?? null);
 		setResult(null);
+		setVerification(null);
+		setArtifactToVerify(null);
 		setError("");
+	}
+
+	async function verifySelectedArtwork() {
+		if (!result?.fingerprint) {
+			setError("Protect an artwork first, then verify the protected artifact.");
+			return;
+		}
+		setBusy(true);
+		setError("");
+		try {
+			const response = await fetch(`${apiUrl}/api/verification`, {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					imageBase64: await fileAsBase64(artifactToVerify ?? base64AsFile(result.protected_image_base64, "protected.png")),
+					expectedFingerprint: result.fingerprint,
+					expectedWatermark: result.watermark,
+					expectedArtifactHash: result.protected_artifact_hash,
+					metadata: { title, artist },
+				}),
+			});
+			const body = await response.json();
+			if (!response.ok) throw new Error(body.error ?? "Verification request failed");
+			setVerification(body as VerificationResult);
+		} catch (requestError) {
+			setError(requestError instanceof Error ? requestError.message : "Verification request failed");
+		} finally {
+			setBusy(false);
+		}
 	}
 
 	async function protect(event: FormEvent<HTMLFormElement>) {
@@ -122,9 +168,9 @@ export default function App() {
 	return (
 		<main className="shell">
 			<section className="intro">
-				<p className="eyebrow">ARTSHIELD / PHASE 1</p>
+				<p className="eyebrow">ARTSHIELD / EXHIBITION MODE</p>
 				<h1>Protect an artwork with verifiable evidence.</h1>
-				<p className="lede">Fingerprint the source, embed a recoverable watermark, and produce a bounded protected PNG.</p>
+				<p className="lede">Upload a source, run the real protection service, and verify the protected artifact against its recorded integrity reference.</p>
 			</section>
 			<section className="workspace" aria-label="Artwork protection">
 				<form className="panel" onSubmit={protect}>
@@ -137,7 +183,9 @@ export default function App() {
 					<label>Title<input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} /></label>
 					<label>Artist<input value={artist} onChange={(event) => setArtist(event.target.value)} maxLength={200} /></label>
 					<label>Watermark<input value={watermark} onChange={(event) => setWatermark(event.target.value)} maxLength={2048} required /></label>
-					<button type="submit" disabled={busy}>{busy ? "Protecting..." : "Protect artwork"}</button>
+					<button type="submit" disabled={busy}>{busy ? "Working..." : "Protect artwork"}</button>
+					<label>Artifact to verify<input type="file" accept="image/png" onChange={(event) => { setArtifactToVerify(event.target.files?.[0] ?? null); setVerification(null); }} /></label>
+					<button className="secondary" type="button" onClick={verifySelectedArtwork} disabled={busy || !result}>{busy ? "Working..." : "Verify protected artifact"}</button>
 					{error && <p className="error" role="alert">{error}</p>}
 				</form>
 				<aside className="panel result" aria-live="polite">
@@ -146,14 +194,23 @@ export default function App() {
 						<>
 							<img src={`data:image/png;base64,${result.protected_image_base64}`} alt="Protected artwork" />
 							<dl>
-								<dt>SHA-256 fingerprint</dt>
+										<dt>Source SHA-256 fingerprint</dt>
 								<dd>{result.fingerprint}</dd>
+										<dt>Protected artifact hash</dt>
+										<dd>{result.protected_artifact_hash}</dd>
 								<dt>Embedded watermark</dt>
 								<dd>{result.watermark}</dd>
 							</dl>
 						</>
 					) : <p className="muted">Your protected artifact and evidence will appear here.</p>}
+					{verification && <div className={`verification ${verification.authentic ? "verified" : "tampered"}`}><strong>{verification.authentic ? "INTEGRITY VERIFIED" : "TAMPERING DETECTED"}</strong><span>{verification.reasons.length ? verification.reasons.join("; ") : "Selected artwork matches the submitted fingerprint."}</span></div>}
 				</aside>
+			</section>
+			<section className="status-band" aria-label="Implementation status">
+				<div><strong>CORE PROTECTION</strong><span>Layers 1–5 active in the ML workflow</span></div>
+				<div><strong>OWNERSHIP & RIGHTS</strong><span>Layers 6–7 available through configured blockchain APIs</span></div>
+				<div><strong>AI SECURITY RESEARCH</strong><span>Layers 8–12 controlled research endpoints</span></div>
+				<div><strong>ADVANCED ANALYSIS</strong><span>Layers 13–15 defensive endpoints; not part of upload protection</span></div>
 			</section>
 			<section className="workspace" aria-label="Ownership and usage rights">
 				<section className="panel">

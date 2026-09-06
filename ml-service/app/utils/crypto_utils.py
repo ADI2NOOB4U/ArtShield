@@ -23,3 +23,7 @@ def fingerprint_bytes(image_bytes: bytes, metadata: dict[str, Any]) -> str:
 
 def checksum(data: bytes) -> bytes:
     return hashlib.sha256(data).digest()
+
+
+def artifact_hash(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()

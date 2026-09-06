@@ -15,6 +15,7 @@ type ProtectionBody = {
 type VerificationBody = ProtectionBody & {
 	expectedFingerprint?: unknown;
 	expectedWatermark?: unknown;
+	expectedArtifactHash?: unknown;
 };
 
 function isBase64(value: unknown): value is string {
@@ -48,6 +49,7 @@ async function callMl(path: string, body: ProtectionBody | VerificationBody): Pr
 		}
 		form.append("expected_fingerprint", verification.expectedFingerprint);
 		if (typeof verification.expectedWatermark === "string") form.append("expected_watermark", verification.expectedWatermark);
+		if (typeof verification.expectedArtifactHash === "string" && /^[a-f0-9]{64}$/i.test(verification.expectedArtifactHash)) form.append("expected_artifact_hash", verification.expectedArtifactHash);
 	}
 	const response = await fetch(`${mlServiceUrl}${path}`, { method: "POST", body: form, signal: AbortSignal.timeout(15000) });
 	if (!response.ok) throw new Error("ML service rejected the request");

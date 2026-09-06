@@ -17,6 +17,7 @@ from app.layers.layer03_adversarial.adversarial import apply_perturbation
 from app.layers.layer05_forgery.forgery import assess_forgery
 from app.schemas.response import ProtectionResponse, VerificationResponse
 from app.utils.image_utils import InvalidImage, encode_png, open_image
+from app.utils.crypto_utils import artifact_hash
 from app.research.experiments import ExperimentConfig, run_experiment
 from app.layers.layer13_model_inversion.model_inversion import PrivacyQueryGuard, suppress_confidence
 from app.layers.layer14_prompt_vaccine.prompt_vaccine import analyze_prompt
@@ -108,8 +109,8 @@ async def protect(
     try:
         source = open_image(raw)
         fingerprint = create_fingerprint(raw, metadata)
-        watermarked = embed_watermark(source, watermark)
-        protected = apply_perturbation(watermarked, fingerprint, strength=1)
+        perturbed = apply_perturbation(source, fingerprint, strength=1)
+        protected = embed_watermark(perturbed, watermark)
         protected_bytes = encode_png(protected)
     except (InvalidImage, WatermarkError, ValueError) as exc:
         raise HTTPException(status_code=HTTP_422, detail=str(exc)) from exc
@@ -117,6 +118,7 @@ async def protect(
         fingerprint=fingerprint,
         watermark=watermark,
         protected_image_base64=base64.b64encode(protected_bytes).decode("ascii"),
+        protected_artifact_hash=artifact_hash(protected_bytes),
     )
 
 
@@ -126,16 +128,19 @@ async def verify(
     expected_fingerprint: str = Form(..., min_length=64, max_length=64),
     metadata_json: str = Form(...),
     expected_watermark: str | None = Form(None, max_length=2048),
+    expected_artifact_hash: str | None = Form(None, min_length=64, max_length=64),
 ) -> VerificationResponse:
     raw = await read_upload(image)
     metadata = parse_metadata(metadata_json)
     try:
-        assessment = assess_forgery(raw, metadata, expected_fingerprint, expected_watermark)
+        assessment = assess_forgery(raw, metadata, expected_fingerprint, expected_watermark, expected_artifact_hash)
     except InvalidImage as exc:
         raise HTTPException(status_code=HTTP_422, detail=str(exc)) from exc
     return VerificationResponse(
         authentic=assessment.authentic,
         fingerprint_match=assessment.fingerprint_match,
         watermark_match=assessment.watermark_match,
+        artifact_hash_match=assessment.artifact_hash_match,
+        verification_scope="protected-artifact" if expected_artifact_hash is not None else "source",
         reasons=list(assessment.reasons),
     )
