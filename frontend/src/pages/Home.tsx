@@ -12,7 +12,7 @@ export default function Home() {
 	return (
 		<div className="min-h-screen bg-ink-950 text-silver-100">
 			<Navbar />
-			<main>
+			<main className="relative z-10 landing-content">
 				<Hero />
 				<Problem />
 				<ShieldIntro />

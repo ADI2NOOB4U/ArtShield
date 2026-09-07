@@ -5,13 +5,15 @@ import { CAPABILITIES, ROUTES } from "../../utils/constants";
 
 export default function Hero() {
 	return (
-		<section id="hero" className="relative isolate overflow-hidden pb-24 pt-32 sm:pt-40 lg:pb-32 lg:pt-48">
-			<div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
+		<section id="hero" data-cinematic-hero className="relative isolate pb-24 pt-32 sm:pt-40 lg:pb-32 lg:pt-48">
+			<div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
 				<div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.06),transparent_60%)]" />
 				<div className="absolute inset-0 opacity-[0.14] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:96px_96px] [mask-image:radial-gradient(ellipse_at_center,black_20%,transparent_72%)]" />
 			</div>
 
-			<div className="site-container grid items-center gap-20 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10">
+			<HeroArtwork />
+
+			<div className="site-container relative z-10">
 				<div className="max-w-2xl">
 					<Reveal>
 						<p className="label-tech">Digital art protection infrastructure</p>
@@ -40,12 +42,7 @@ export default function Hero() {
 					</Reveal>
 				</div>
 
-				<Reveal delay={200} className="lg:justify-self-end">
-					<HeroArtwork />
-				</Reveal>
-			</div>
-
-			<Reveal delay={600} className="site-container mt-24 hidden md:block lg:mt-32">
+				<Reveal delay={600} className="relative mt-24 hidden md:block lg:mt-32">
 				<div className="hairline" />
 				<ul className="flex flex-wrap items-center gap-x-10 gap-y-3 pt-6">
 					{CAPABILITIES.map((item) => (
@@ -55,6 +52,7 @@ export default function Hero() {
 					))}
 				</ul>
 			</Reveal>
+			</div>
 		</section>
 	);
 }

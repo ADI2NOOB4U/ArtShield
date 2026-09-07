@@ -44,11 +44,11 @@ export default function Navbar() {
 						{NAV_LINKS.map((link) => (
 							<li key={link.label}>
 								{link.placeholder ? (
-									<span className="cursor-default font-mono text-[11px] uppercase tracking-techno text-silver-500" aria-disabled="true" title={PLACEHOLDER_TITLE}>
+									<span className="cursor-default font-mono text-[11px] font-medium uppercase tracking-techno text-silver-300" aria-disabled="true" title={PLACEHOLDER_TITLE}>
 										{link.label}
 									</span>
 								) : (
-									<a href={link.href} className="font-mono text-[11px] uppercase tracking-techno text-silver-300 transition-colors duration-300 hover:text-silver-50">
+									<a href={link.href} className="font-mono text-[11px] font-medium uppercase tracking-techno text-silver-200 transition-colors duration-300 hover:text-silver-50">
 										{link.label}
 									</a>
 								)}
@@ -57,7 +57,7 @@ export default function Navbar() {
 					</ul>
 
 					<div className="hidden items-center gap-7 lg:flex">
-						<span className="cursor-default font-mono text-[11px] uppercase tracking-techno text-silver-500" aria-disabled="true" title={PLACEHOLDER_TITLE}>
+						<span className="cursor-default font-mono text-[11px] font-medium uppercase tracking-techno text-silver-300" aria-disabled="true" title={PLACEHOLDER_TITLE}>
 							Login
 						</span>
 						<ButtonLink to={ROUTES.protect} size="sm">

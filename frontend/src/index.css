@@ -27,6 +27,37 @@
 	.site-container {
 		@apply mx-auto w-full max-w-site px-5 sm:px-8 lg:px-12;
 	}
+	.landing-content :is(h1, h2, h3) {
+		color: #f5f6f7;
+		font-weight: 600;
+		text-shadow: 0 2px 14px rgba(0, 0, 0, 0.82);
+	}
+	.landing-content h1 span { color: #e7e9ec; }
+	.landing-content p:not(.label-tech) {
+		color: #cfd3d8;
+		font-weight: 450;
+		text-shadow: 0 2px 14px rgba(0, 0, 0, 0.86);
+	}
+	.landing-content .label-tech {
+		color: #cfd3d8;
+		font-weight: 600;
+		text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9);
+	}
+	.landing-content :is(a, button) { text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7); }
+	.cinematic-readability {
+		background:
+			linear-gradient(180deg, rgba(5, 6, 7, 0.78) 0%, rgba(5, 6, 7, 0.16) 42%, rgba(5, 6, 7, 0.76) 100%),
+			linear-gradient(90deg, rgba(5, 6, 7, 0.94) 0%, rgba(5, 6, 7, 0.72) 52%, rgba(5, 6, 7, 0.34) 100%),
+			radial-gradient(ellipse at center, rgba(5, 6, 7, 0.16), transparent 68%);
+	}
+	@media (min-width: 768px) {
+		.cinematic-readability {
+			background:
+				linear-gradient(90deg, rgba(5, 6, 7, 0.99) 0%, rgba(5, 6, 7, 0.9) 36%, rgba(5, 6, 7, 0.46) 72%, rgba(5, 6, 7, 0.18) 100%),
+				linear-gradient(0deg, rgba(5, 6, 7, 0.8) 0%, transparent 38%, rgba(5, 6, 7, 0.28) 100%),
+				radial-gradient(ellipse at center, rgba(5, 6, 7, 0.16), transparent 68%);
+		}
+	}
 	.label-tech {
 		@apply font-mono text-[11px] uppercase tracking-techno text-silver-400;
 	}
