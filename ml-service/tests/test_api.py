@@ -4,6 +4,7 @@ import base64
 import io
 import json
 import unittest
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from PIL import Image
@@ -32,6 +33,17 @@ class ApiTests(unittest.TestCase):
         body = response.json()
         self.assertEqual(len(body["fingerprint"]), 64)
         self.assertTrue(body["protected_image_base64"])
+
+    def test_configured_ml_service_token_blocks_direct_access(self):
+        with patch.dict("os.environ", {"ML_SERVICE_TOKEN": "test-internal-token"}):
+            denied = self.client.post("/v1/security/prompt-check", json={"prompt": "hello", "policy": "WARN"})
+            self.assertEqual(denied.status_code, 401)
+            allowed = self.client.post(
+                "/v1/security/prompt-check",
+                headers={"x-artshield-ml-token": "test-internal-token"},
+                json={"prompt": "hello", "policy": "WARN"},
+            )
+            self.assertEqual(allowed.status_code, 200, allowed.text)
 
     def test_layer3_evaluation_endpoint_returns_structured_research_measurements(self):
         response = self.client.post("/v1/research/layer3/evaluate", json={"seed": 11, "samples_per_class": 16, "sample_index": 0, "strength": 1})

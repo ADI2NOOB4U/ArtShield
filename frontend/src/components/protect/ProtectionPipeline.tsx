@@ -12,9 +12,10 @@ const PIPELINE_STEPS: PipelineStep[] = [
 	{ id: "analyze", number: "02", title: "ANALYZE", subtext: "Perceptual frequency & structure check" },
 	{ id: "identity", number: "03", title: "IDENTITY", subtext: "Generating cryptographic fingerprint" },
 	{ id: "watermark", number: "04", title: "WATERMARK", subtext: "Imperceptible latent-space embedding" },
-	{ id: "integrity", number: "05", title: "INTEGRITY", subtext: "Calculating SHA-256 seal" },
-	{ id: "provenance", number: "06", title: "PROVENANCE", subtext: "Binding ownership & ledger state" },
-	{ id: "protected", number: "07", title: "PROTECTED", subtext: "Shielded artifact ready" },
+	{ id: "ai-shield", number: "05", title: "AI SHIELD", subtext: "Applying defensive perturbation" },
+	{ id: "integrity", number: "06", title: "INTEGRITY", subtext: "Calculating SHA-256 seal" },
+	{ id: "provenance", number: "07", title: "PROVENANCE", subtext: "Preparing ownership record" },
+	{ id: "protected", number: "08", title: "PROTECTED", subtext: "Shielded artifact ready" },
 ];
 
 export type StepStatus = "idle" | "active" | "complete";
@@ -33,7 +34,7 @@ export const ProtectionPipeline: React.FC<ProtectionPipelineProps> = ({
 	reducedMotion = false,
 }) => {
 	const getStepStatus = (index: number): StepStatus => {
-		if (hasResult || phase >= 8) return "complete";
+		if (hasResult || phase >= 9) return "complete";
 		if (phase === 0) return "idle";
 		const currentActiveIndex = phase - 1;
 		if (index < currentActiveIndex) return "complete";
@@ -48,9 +49,9 @@ export const ProtectionPipeline: React.FC<ProtectionPipelineProps> = ({
 					<span className="pc-tag__dot" />
 					<span>CRYPTOGRAPHIC PIPELINE</span>
 				</div>
-				<h2 className="pc-pipeline__title">Zero-Loss Protection Sequence</h2>
+				<h2 className="pc-pipeline__title">Protection Sequence</h2>
 				<p className="pc-pipeline__desc">
-					Each asset undergoes strict non-destructive encoding, dual-layer watermarking, and SHA-256 seal generation.
+					The live request produces the protected artifact; this sequence visualizes the protection layers being applied while it runs.
 				</p>
 			</div>
 

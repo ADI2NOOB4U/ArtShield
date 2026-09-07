@@ -20,7 +20,8 @@ export default function HeroSequenceCanvas() {
 	const framesRef = useRef<(HTMLImageElement | undefined)[]>(Array(FRAME_COUNT));
 	const targetFrameRef = useRef(0);
 	const rafRef = useRef(0);
-	const drawRef = useRef<() => void>(() => undefined);
+	const latestScrollYRef = useRef(0);
+	const drawFrameRef = useRef<() => void>(() => undefined);
 	const [firstFrameReady, setFirstFrameReady] = useState(false);
 	const [loadedCount, setLoadedCount] = useState(0);
 	const reducedMotion = useReducedMotion();
@@ -78,7 +79,7 @@ export default function HeroSequenceCanvas() {
 				draw();
 			});
 		};
-		drawRef.current = requestDraw;
+		drawFrameRef.current = draw;
 
 		const loadFrame = (index: number) =>
 			new Promise<void>((resolve) => {
@@ -138,14 +139,28 @@ export default function HeroSequenceCanvas() {
 		if (reducedMotion) return;
 		const updateTargetFrame = () => {
 			const travel = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
-			const progress = Math.min(1, Math.max(0, window.scrollY / travel));
+			const progress = Math.min(1, Math.max(0, latestScrollYRef.current / travel));
 			targetFrameRef.current = Math.round(progress * (FRAME_COUNT - 1));
 			rootRef.current?.setAttribute("data-frame-index", String(targetFrameRef.current));
-			drawRef.current();
+			drawFrameRef.current();
 		};
-		window.addEventListener("scroll", updateTargetFrame, { passive: true });
-		updateTargetFrame();
-		return () => window.removeEventListener("scroll", updateTargetFrame);
+		const onScroll = () => {
+			latestScrollYRef.current = window.scrollY;
+			if (rafRef.current) return;
+			rafRef.current = window.requestAnimationFrame(() => {
+				rafRef.current = 0;
+				updateTargetFrame();
+			});
+		};
+		window.addEventListener("scroll", onScroll, { passive: true });
+		onScroll();
+		return () => {
+			window.removeEventListener("scroll", onScroll);
+			if (rafRef.current) {
+				window.cancelAnimationFrame(rafRef.current);
+				rafRef.current = 0;
+			}
+		};
 	}, [reducedMotion]);
 
 	return (

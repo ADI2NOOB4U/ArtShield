@@ -33,6 +33,17 @@ export class BlockchainConfigurationError extends Error {}
 export class DuplicateCertificateError extends Error {}
 export class BlockchainTransactionError extends Error {}
 
+function assertLocalDevelopmentChain(rpcUrl: string): void {
+	try {
+		const url = new URL(rpcUrl);
+		if (!['localhost', '127.0.0.1', '::1'].includes(url.hostname) || (process.env.BLOCKCHAIN_CHAIN_ID && process.env.BLOCKCHAIN_CHAIN_ID !== '31337')) {
+			throw new Error();
+		}
+	} catch {
+		throw new BlockchainConfigurationError("blockchain signing is restricted to the local Hardhat chain");
+	}
+}
+
 function canonicalize(value: unknown): unknown {
 	if (Array.isArray(value)) return value.map(canonicalize);
 	if (value && typeof value === "object") {
@@ -60,6 +71,7 @@ export function createConfiguredCertificateClient(): CertificateClient & { contr
 	const contractAddress = process.env.CERTIFICATE_CONTRACT_ADDRESS;
 	const privateKey = process.env.CERTIFICATE_SIGNER_PRIVATE_KEY;
 	if (!rpcUrl || !contractAddress || !privateKey) throw new BlockchainConfigurationError("blockchain certificate configuration is incomplete");
+	assertLocalDevelopmentChain(rpcUrl);
 	if (!isAddress(contractAddress)) throw new BlockchainConfigurationError("CERTIFICATE_CONTRACT_ADDRESS is invalid");
 	const provider = new JsonRpcProvider(rpcUrl);
 	let signer: Wallet;

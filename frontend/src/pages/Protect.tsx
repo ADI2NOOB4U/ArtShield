@@ -4,6 +4,8 @@ import { loadVerificationReferences, saveVerificationReference, VerificationRefe
 import "../styles/protect-cinematic.css";
 
 import { CinematicBackground } from "../components/protect/CinematicBackground";
+import { ExhibitionDemo } from "../components/protect/ExhibitionDemo";
+import { ArtifactEvent, ArtifactIntelligence, ProvenanceRecord } from "../components/protect/ArtifactIntelligence";
 import { ProtectionPipeline } from "../components/protect/ProtectionPipeline";
 import { ProtectionResult as CinematicProtectionResult } from "../components/protect/ProtectionResult";
 import { VerificationSection, VerificationResultData } from "../components/protect/VerificationSection";
@@ -41,6 +43,15 @@ type CertificateResult = {
 	contractAddress: string;
 	chainId: string;
 	metadataUri: string;
+};
+
+type ArtworkProvenanceResponse = {
+	currentOwner?: string;
+	creator?: string;
+	certificateTokenId?: string;
+	registeredAt?: string;
+	registered?: boolean;
+	[key: string]: unknown;
 };
 
 function fileAsBase64(file: File): Promise<string> {
@@ -123,7 +134,10 @@ export default function Protect() {
 	const [downloadMessage, setDownloadMessage] = useState("");
 	const [mutationToken, setMutationToken] = useState("");
 	const [newOwner, setNewOwner] = useState("");
+	const [provenanceRecord, setProvenanceRecord] = useState<ProvenanceRecord | null>(null);
+	const [securityEvents, setSecurityEvents] = useState<ArtifactEvent[]>([]);
 	const artifactSelectionVersion = useRef(0);
+	const recordEvent = (label: string, detail: string) => setSecurityEvents((current) => [...current, { at: new Date().toISOString(), label, detail }]);
 
 	// Cinematic audio, parallax & animation state
 	const audio = useAudioEngine();
@@ -175,7 +189,7 @@ export default function Protect() {
 	useEffect(() => {
 		if (!busy) {
 			if (result) {
-				setPipelinePhase(8);
+				setPipelinePhase(9);
 			}
 			return;
 		}
@@ -185,7 +199,7 @@ export default function Protect() {
 
 		const interval = window.setInterval(() => {
 			setPipelinePhase((prev) => {
-				if (prev >= 7) return 7;
+				if (prev >= 8) return 8;
 				const next = prev + 1;
 				audioPlayRef.current("tick");
 				return next;
@@ -210,6 +224,7 @@ export default function Protect() {
 		setPipelinePhase(0);
 		if (chosen) {
 			audio.play("upload");
+			recordEvent("ARTIFACT RECEIVED", `${chosen.name} selected locally`);
 		}
 	}
 
@@ -286,6 +301,7 @@ export default function Protect() {
 				}),
 			});
 			setVerification(body);
+			recordEvent(body.authentic ? "ARTIFACT VERIFIED" : "INTEGRITY FAILURE DETECTED", body.authentic ? "Candidate matched its local protection reference" : "Candidate did not match its local protection reference");
 			audio.play("verify");
 		} catch (requestError) {
 			setError(requestError instanceof Error ? requestError.message : "Verification request failed");
@@ -313,6 +329,10 @@ export default function Protect() {
 				}),
 			});
 			setResult(body);
+			recordEvent("IDENTITY GENERATED", "Canonical fingerprint returned by the protection service");
+			recordEvent("WATERMARK EMBEDDED", "Protection service completed its watermark operation");
+			recordEvent("INTEGRITY HASH GENERATED", "Protected artifact SHA-256 returned");
+			recordEvent("PROTECTION COMPLETE", "Protected artifact and local verification reference are available");
 			audio.play("success");
 			const reference: VerificationReference = {
 				sourceFingerprint: body.fingerprint,
@@ -362,6 +382,7 @@ export default function Protect() {
 				}),
 			});
 			setPhase2Message(`Registration submitted: ${body.transactionHash}`);
+			recordEvent("PROVENANCE REGISTERED", `Registration transaction: ${body.transactionHash}`);
 		} catch (requestError) {
 			setPhase2Message(requestError instanceof Error ? requestError.message : "Registration failed");
 		}
@@ -383,6 +404,7 @@ export default function Protect() {
 				}),
 			});
 			setPhase2Message(`Rights transaction submitted: ${body.transactionHash}`);
+			recordEvent("RIGHTS ISSUED", `Rights transaction: ${body.transactionHash}`);
 		} catch (requestError) {
 			setPhase2Message(requestError instanceof Error ? requestError.message : "Rights issuance failed");
 		}
@@ -409,6 +431,7 @@ export default function Protect() {
 			});
 			setCertificate(body as CertificateResult);
 			setPhase2Message(`Certificate confirmed on chain: token ${body.tokenId}`);
+			recordEvent("CERTIFICATE CREATED", `Certificate token ${body.tokenId} returned by the blockchain service`);
 		} catch (requestError) {
 			setPhase2Error(true);
 			setPhase2Message(requestError instanceof Error ? requestError.message : "Certificate issuance failed");
@@ -420,12 +443,21 @@ export default function Protect() {
 	async function lookupProvenance() {
 		try {
 			const [artwork, history] = await Promise.all([
-				phase2Request<{ currentOwner?: string; [key: number]: unknown }>(
+				phase2Request<ArtworkProvenanceResponse>(
 					`/api/artworks/${encodeURIComponent(lookupFingerprint)}`,
 				),
 				phase2Request<unknown[]>(`/api/artworks/${encodeURIComponent(lookupFingerprint)}/provenance`),
 			]);
-			const owner = artwork.currentOwner ?? (typeof artwork[1] === "string" ? artwork[1] : undefined) ?? "unavailable";
+			const owner = artwork.currentOwner ?? (typeof artwork["1"] === "string" ? artwork["1"] : undefined) ?? "unavailable";
+			setProvenanceRecord({
+				owner,
+				creator: typeof artwork.creator === "string" ? artwork.creator : undefined,
+				certificateTokenId: typeof artwork.certificateTokenId === "string" ? artwork.certificateTokenId : undefined,
+				registeredAt: typeof artwork.registeredAt === "string" ? artwork.registeredAt : undefined,
+				registered: artwork.registered === true,
+				entries: history.filter((entry): entry is string => typeof entry === "string"),
+			});
+			recordEvent("PROVENANCE INSPECTED", `${history.length} record(s) returned by the provenance service`);
 			setPhase2Message(`Current owner: ${owner}; provenance entries: ${history.length}`);
 		} catch (requestError) {
 			setPhase2Message(requestError instanceof Error ? requestError.message : "Provenance lookup failed");
@@ -451,6 +483,7 @@ export default function Protect() {
 				body: JSON.stringify({ artworkFingerprint: lookupFingerprint, newOwner }),
 			});
 			setPhase2Message(`Ownership transfer confirmed: ${body.transactionHash}`);
+			recordEvent("OWNERSHIP TRANSFERRED", `Transfer transaction: ${body.transactionHash}`);
 		} catch (requestError) {
 			setPhase2Error(true);
 			setPhase2Message(requestError instanceof Error ? requestError.message : "Ownership transfer failed");
@@ -465,6 +498,7 @@ export default function Protect() {
 				`/api/rights/${encodeURIComponent(rightsTokenId)}/verify?rightsMask=${encodeURIComponent(rightsMask)}`,
 			);
 			setPhase2Message(body.valid ? "Rights are currently valid." : "Rights are not valid.");
+			recordEvent("RIGHTS VERIFIED", body.valid ? "Requested rights mask is valid" : "Requested rights mask is not valid");
 		} catch (requestError) {
 			setPhase2Message(requestError instanceof Error ? requestError.message : "Rights verification failed");
 		}
@@ -477,6 +511,7 @@ export default function Protect() {
 				{ method: "POST" },
 			);
 			setPhase2Message(`Revocation submitted: ${body.transactionHash}`);
+			recordEvent("RIGHTS REVOKED", `Revocation transaction: ${body.transactionHash}`);
 		} catch (requestError) {
 			setPhase2Message(requestError instanceof Error ? requestError.message : "Rights revocation failed");
 		}
@@ -598,6 +633,15 @@ export default function Protect() {
 						non-destructive perceptual encoding, and mathematical SHA-256 integrity proofs.
 					</p>
 				</section>
+
+				<ExhibitionDemo
+					fileSelected={Boolean(file)}
+					protecting={busy}
+					hasProtectedArtifact={Boolean(result)}
+					artifactSelected={Boolean(artifactToVerify)}
+					verificationComplete={Boolean(verification)}
+					onStart={() => fileInputRef.current?.click()}
+				/>
 
 				{/* Primary Protection Workspace (Upload + Controls) */}
 				<section className="pc-workspace" aria-label="Artwork Protection Controls">
@@ -841,6 +885,18 @@ export default function Protect() {
 						{downloadMessage}
 					</div>
 				)}
+
+				<ArtifactIntelligence
+					file={file}
+					preview={result ? `data:image/png;base64,${result.protected_image_base64}` : filePreviewUrl}
+					result={result}
+					title={title}
+					artist={artist}
+					certificate={certificate}
+					provenance={provenanceRecord}
+					events={securityEvents}
+					apiBase={apiUrl}
+				/>
 
 				{/* Two-Column Verification Suite */}
 				<VerificationSection

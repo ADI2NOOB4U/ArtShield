@@ -23,6 +23,17 @@ export class Phase2BlockchainError extends Error {
 }
 export class Phase2ConflictError extends Error {
 }
+function assertLocalDevelopmentChain(rpcUrl) {
+    try {
+        const url = new URL(rpcUrl);
+        if (!['localhost', '127.0.0.1', '::1'].includes(url.hostname) || (process.env.BLOCKCHAIN_CHAIN_ID && process.env.BLOCKCHAIN_CHAIN_ID !== '31337')) {
+            throw new Error();
+        }
+    }
+    catch {
+        throw new Phase2ConfigurationError("blockchain signing is restricted to the local Hardhat chain");
+    }
+}
 function hash(value, field) {
     if (typeof value !== "string" || !/^0x[a-f0-9]{64}$/i.test(value))
         throw new Phase2ValidationError(`${field} must be a 32-byte hex hash`);
@@ -86,6 +97,7 @@ export function createConfiguredPhase2Client() {
     const privateKey = process.env.CERTIFICATE_SIGNER_PRIVATE_KEY;
     if (!rpcUrl || !ownershipAddress || !rightsAddress || !privateKey)
         throw new Phase2ConfigurationError("Phase 2 blockchain configuration is incomplete");
+    assertLocalDevelopmentChain(rpcUrl);
     if (!isAddress(ownershipAddress) || !isAddress(rightsAddress))
         throw new Phase2ConfigurationError("Phase 2 contract address is invalid");
     const provider = new JsonRpcProvider(rpcUrl);

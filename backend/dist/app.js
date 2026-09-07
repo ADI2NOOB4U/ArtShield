@@ -2,14 +2,18 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import helmet from "helmet";
+import { rateLimit } from "express-rate-limit";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import blockchainRoutes from "./routes/blockchain.routes.js";
 import phase2Routes from "./routes/phase2.routes.js";
+import { requireMutationAuth } from "./middleware/mutation-auth.middleware.js";
 dotenv.config({ path: resolve(dirname(fileURLToPath(import.meta.url)), "../../.env"), quiet: true });
-const MAX_IMAGE_BASE64_LENGTH = 14 * 1024 * 1024;
-const JSON_BODY_LIMIT = "15mb";
+// Base64 has ~33% overhead; this caps decoded artwork below the ML 10 MiB limit.
+const MAX_IMAGE_BASE64_LENGTH = 13 * 1024 * 1024;
+const JSON_BODY_LIMIT = "14mb";
 const mlServiceUrl = process.env.ML_SERVICE_URL ?? "http://localhost:8000";
+const isProduction = process.env.NODE_ENV === "production";
 class MlServiceError extends Error {
     statusCode;
     constructor(statusCode, message) {
@@ -22,6 +26,9 @@ function isBase64(value) {
     return typeof value === "string" && value.length > 0 && value.length <= MAX_IMAGE_BASE64_LENGTH && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value);
 }
 function parseProtectionBody(body) {
+    if (!body || typeof body !== "object" || Object.keys(body).some((key) => !["imageBase64", "watermark", "metadata", "expectedFingerprint", "expectedWatermark", "expectedArtifactHash"].includes(key))) {
+        throw new Error("request contains unsupported fields");
+    }
     if (!isBase64(body.imageBase64)) {
         throw new Error("imageBase64 must be a valid bounded base64 string");
     }
@@ -62,23 +69,17 @@ async function callMl(path, body) {
     }
     let response;
     try {
-        response = await fetch(`${mlServiceUrl}${path}`, { method: "POST", body: form, signal: AbortSignal.timeout(15000) });
+        response = await fetch(`${mlServiceUrl}${path}`, {
+            method: "POST", body: form, signal: AbortSignal.timeout(15000),
+            headers: process.env.ML_SERVICE_TOKEN ? { "x-artshield-ml-token": process.env.ML_SERVICE_TOKEN } : undefined,
+        });
     }
     catch {
         throw new MlServiceError(503, "ML service is unavailable");
     }
     if (!response.ok) {
-        let detail = response.statusText || "request rejected";
-        try {
-            const payload = await response.json();
-            if (typeof payload.detail === "string")
-                detail = payload.detail;
-            else if (typeof payload.error === "string")
-                detail = payload.error;
-        }
-        catch { }
         const statusCode = response.status >= 400 && response.status < 500 ? response.status : 502;
-        throw new MlServiceError(statusCode, `ML service ${response.status >= 500 ? "failed" : "rejected the request"}: ${detail}`);
+        throw new MlServiceError(statusCode, response.status >= 500 ? "ML service failed" : "ML service rejected the request");
     }
     try {
         return await response.json();
@@ -92,7 +93,7 @@ async function callSecurity(path, body) {
     try {
         response = await fetch(`${mlServiceUrl}${path}`, {
             method: "POST",
-            headers: { "content-type": "application/json" },
+            headers: { "content-type": "application/json", ...(process.env.ML_SERVICE_TOKEN ? { "x-artshield-ml-token": process.env.ML_SERVICE_TOKEN } : {}) },
             body: JSON.stringify(body),
             signal: AbortSignal.timeout(15000),
         });
@@ -101,17 +102,8 @@ async function callSecurity(path, body) {
         throw new MlServiceError(503, "ML security service is unavailable");
     }
     if (!response.ok) {
-        let detail = response.statusText || "request rejected";
-        try {
-            const payload = await response.json();
-            if (typeof payload.detail === "string")
-                detail = payload.detail;
-            else if (typeof payload.error === "string")
-                detail = payload.error;
-        }
-        catch { }
         const statusCode = response.status >= 400 && response.status < 500 ? response.status : 502;
-        throw new MlServiceError(statusCode, `ML security service ${response.status >= 500 ? "failed" : "rejected the request"}: ${detail}`);
+        throw new MlServiceError(statusCode, response.status >= 500 ? "ML security service failed" : "ML security service rejected the request");
     }
     try {
         return await response.json();
@@ -129,29 +121,30 @@ const corsOptions = {
             callback(null, true);
             return;
         }
-        try {
-            const url = new URL(origin);
-            const isLocalViteOrigin = (url.hostname === "localhost" || url.hostname === "127.0.0.1")
-                && Number(url.port) >= 5173 && Number(url.port) <= 5199;
-            callback(null, isLocalViteOrigin);
-        }
-        catch {
-            callback(null, false);
-        }
+        callback(null, false);
     },
     methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-ArtShield-Role"],
     optionsSuccessStatus: 204,
 };
 app.disable("x-powered-by");
-app.use(helmet());
+app.use(helmet({
+    contentSecurityPolicy: false, // API responses contain JSON; frontend CSP belongs at its static host.
+    referrerPolicy: { policy: "no-referrer" },
+    frameguard: { action: "deny" },
+    permittedCrossDomainPolicies: { permittedPolicies: "none" },
+    hsts: isProduction ? undefined : false,
+}));
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 app.use(express.json({ limit: JSON_BODY_LIMIT }));
+const expensiveLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 40, standardHeaders: "draft-8", legacyHeaders: false, message: { error: "too many expensive requests; please retry shortly" } });
+const mutationLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 80, standardHeaders: "draft-8", legacyHeaders: false, skip: (request) => ["GET", "HEAD", "OPTIONS"].includes(request.method), message: { error: "too many mutation requests; please retry shortly" } });
+app.use("/api", mutationLimiter);
 app.use("/api", blockchainRoutes);
 app.use("/api", phase2Routes);
 app.get("/health", (_request, response) => response.json({ status: "ok", service: "backend", phase: "1" }));
-app.post("/api/protection", async (request, response, next) => {
+app.post("/api/protection", requireMutationAuth, expensiveLimiter, async (request, response, next) => {
     try {
         response.json(await callMl("/v1/protect", request.body));
     }
@@ -159,7 +152,7 @@ app.post("/api/protection", async (request, response, next) => {
         next(error);
     }
 });
-app.post("/api/verification", async (request, response, next) => {
+app.post("/api/verification", requireMutationAuth, expensiveLimiter, async (request, response, next) => {
     try {
         response.json(await callMl("/v1/verify", request.body));
     }
@@ -168,7 +161,7 @@ app.post("/api/verification", async (request, response, next) => {
     }
 });
 for (const [route, mlPath] of [["/api/security/model-inversion", "/v1/security/model-inversion"], ["/api/security/prompt-check", "/v1/security/prompt-check"], ["/api/security/file-check", "/v1/security/file-check"]]) {
-    app.post(route, async (request, response, next) => {
+    app.post(route, requireMutationAuth, expensiveLimiter, async (request, response, next) => {
         try {
             response.json(await callSecurity(mlPath, request.body));
         }
@@ -188,6 +181,6 @@ app.use((error, _request, response, _next) => {
     }
     const message = error instanceof Error ? error.message : "request failed";
     const status = message.includes("must be") ? 422 : message.includes("ML service") || message.includes("security request") || message.includes("fetch failed") ? 503 : 400;
-    response.status(status).json({ error: message });
+    response.status(status).json({ error: isProduction && status >= 500 ? "request failed" : message });
 });
 //# sourceMappingURL=app.js.map

@@ -8,7 +8,6 @@ export const ROUTES = {
 
 export const BRAND = {
 	name: "ARTSHIELD",
-	tagline: "PROTECT. PROVE. CONTROL.",
 	tagline: "PROTECT THE ART. PROVE THE ORIGINAL.",
 } as const;
 
@@ -24,8 +23,6 @@ export const NAV_LINKS: NavLink[] = [
 	{ label: "Verification", href: "/#verification" },
 	{ label: "Technology", href: "/#technology" },
 	{ label: "Provenance", href: "/#provenance" },
-	{ label: "Pricing", href: "#", placeholder: true },
-	{ label: "Verification", href: "/#verification" },
 	{ label: "Pricing", href: "/pricing", isRoute: true },
 ];
 
@@ -121,8 +118,8 @@ export const PRICING_TIERS: PricingTier[] = [
 		description: "High-frequency perturbation hardening, on-chain provenance registration, and unlimited artifact generation.",
 		features: [
 			"Unlimited artwork protections",
-			"Zero-loss frequency domain hardening",
-			"Imperceptible latent-space watermarking",
+		"Frequency-domain AI Shield hardening",
+		"Steganographic watermark embedding",
 			"On-chain certificate of authenticity issuance",
 			"Immutable ownership registration",
 			"High-resolution 4K/8K batch processing",

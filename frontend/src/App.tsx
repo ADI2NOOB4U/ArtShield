@@ -14,7 +14,6 @@ function ScrollManager() {
 		if (hash) {
 			const target = document.getElementById(hash.slice(1));
 			if (target) {
-				target.scrollIntoView();
 				target.scrollIntoView({ behavior: "smooth" });
 				return;
 			}
@@ -26,7 +25,6 @@ function ScrollManager() {
 
 export default function App() {
 	return (
-		<>
 		<AuthProvider>
 			<ScrollManager />
 			<Routes>
@@ -35,7 +33,6 @@ export default function App() {
 				<Route path={ROUTES.pricing} element={<Pricing />} />
 				<Route path="*" element={<NotFound />} />
 			</Routes>
-		</>
 		</AuthProvider>
 	);
 }

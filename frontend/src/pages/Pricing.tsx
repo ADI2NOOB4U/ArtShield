@@ -32,7 +32,7 @@ export default function Pricing() {
 	};
 
 	return (
-		<div className="min-h-screen bg-ink-950 text-silver-100 relative">
+		<div className="pricing-exhibition min-h-screen bg-ink-950 text-silver-100 relative">
 			{/* Background */}
 			<CinematicBackground />
 

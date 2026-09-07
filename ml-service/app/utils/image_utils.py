@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from io import BytesIO
+import warnings
 
 from PIL import Image, UnidentifiedImageError
 
@@ -21,10 +22,14 @@ def open_image(image_bytes: bytes) -> Image.Image:
     if len(image_bytes) > MAX_IMAGE_BYTES:
         raise InvalidImage("image exceeds the 10 MiB limit")
     try:
-        image = Image.open(BytesIO(image_bytes))
-        image.verify()
-        image = Image.open(BytesIO(image_bytes))
-    except (UnidentifiedImageError, OSError, ValueError) as exc:
+        # Pillow otherwise emits (rather than raises) a decompression-bomb
+        # warning. Treat it as a rejected upload before rasterization.
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            image = Image.open(BytesIO(image_bytes))
+            image.verify()
+            image = Image.open(BytesIO(image_bytes))
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombWarning) as exc:
         raise InvalidImage("image is not a valid PNG, JPEG, or WebP file") from exc
     if image.format not in ALLOWED_FORMATS:
         raise InvalidImage("image format is not supported")

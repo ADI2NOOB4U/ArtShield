@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextFunction, Request, Response } from "express";
+import { securityLog } from "./observability.middleware.js";
 
 const TOKEN_HEADER = "authorization";
 const ROLE_HEADER = "x-artshield-role";
@@ -18,10 +19,12 @@ export function requireMutationAuth(request: Request, response: Response, next: 
 	const token = authorization?.startsWith("Bearer ") ? authorization.slice("Bearer ".length) : undefined;
 
 	if (!configuredToken || !token || !safeEqual(token, configuredToken)) {
+		securityLog("authentication_failure", request, { status: 401 });
 		response.status(401).json({ error: "mutation authorization required" });
 		return;
 	}
 	if (role !== configuredRole) {
+		securityLog("authorization_failure", request, { status: 403 });
 		response.status(403).json({ error: "mutation role is not authorized" });
 		return;
 	}
