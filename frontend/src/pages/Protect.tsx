@@ -1,16 +1,25 @@
-import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { loadVerificationReferences, saveVerificationReference, VerificationReference } from "../verificationReference";
-import "../styles/legacy-tool.css";
+import "../styles/protect-cinematic.css";
+
+import { CinematicBackground } from "../components/protect/CinematicBackground";
+import { ProtectionPipeline } from "../components/protect/ProtectionPipeline";
+import { ProtectionResult as CinematicProtectionResult } from "../components/protect/ProtectionResult";
+import { VerificationSection, VerificationResultData } from "../components/protect/VerificationSection";
+import { useAudioEngine } from "../hooks/useAudioEngine";
+import { useReducedMotion } from "../hooks/useReducedMotion";
+import { usePointerParallax } from "../hooks/usePointerParallax";
 
 /*
- * Existing exhibition protect/verify tool, moved here from App.tsx without behavioural changes.
+ * Existing exhibition protect/verify tool, enhanced into a cinematic cyber-security experience.
  * API paths, request bodies, auth headers, SHA-256 verification, verification-reference
  * persistence and download behaviour are intentionally identical to the original.
  */
 
 const configuredApiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 const apiUrl = configuredApiUrl.replace(/\/api\/?$/, "").replace(/\/+$/, "");
+const usesLocalDemoProxy = import.meta.env.DEV && apiUrl === "";
 
 type ProtectionResult = {
 	fingerprint: string;
@@ -61,9 +70,10 @@ async function readApiResponse<T>(response: Response): Promise<T> {
 		body = null;
 	}
 	if (!response.ok) {
-		const message = body && typeof body === "object" && "error" in body && typeof body.error === "string"
-			? body.error
-			: text || response.statusText || "Request failed";
+		const message =
+			body && typeof body === "object" && "error" in body && typeof body.error === "string"
+				? body.error
+				: text || response.statusText || "Request failed";
 		throw new Error(`${response.status} ${message}`);
 	}
 	return body as T;
@@ -115,12 +125,81 @@ export default function Protect() {
 	const [newOwner, setNewOwner] = useState("");
 	const artifactSelectionVersion = useRef(0);
 
+	// Cinematic audio, parallax & animation state
+	const audio = useAudioEngine();
+	const reducedMotion = useReducedMotion();
+	const [pipelinePhase, setPipelinePhase] = useState<number>(0);
+	const [tamperResistant, setTamperResistant] = useState<boolean>(true);
+	const [isDropActive, setIsDropActive] = useState(false);
+
+	const uploadCardRef = useRef<HTMLDivElement | null>(null);
+	const fileInputRef = useRef<HTMLInputElement | null>(null);
+	usePointerParallax(uploadCardRef, !reducedMotion);
+
+	const audioPlayRef = useRef(audio.play);
+	useEffect(() => {
+		audioPlayRef.current = audio.play;
+	});
+
+	const filePreviewUrl = useMemo(() => {
+		if (!file) return null;
+		return URL.createObjectURL(file);
+	}, [file]);
+
+	useEffect(() => {
+		return () => {
+			if (filePreviewUrl) {
+				URL.revokeObjectURL(filePreviewUrl);
+			}
+		};
+	}, [filePreviewUrl]);
+
+	const artifactPreviewUrl = useMemo(() => {
+		if (!artifactToVerify) return null;
+		return URL.createObjectURL(artifactToVerify);
+	}, [artifactToVerify]);
+
+	useEffect(() => {
+		return () => {
+			if (artifactPreviewUrl) {
+				URL.revokeObjectURL(artifactPreviewUrl);
+			}
+		};
+	}, [artifactPreviewUrl]);
+
 	useEffect(() => {
 		setVerificationReferences(loadVerificationReferences());
 	}, []);
 
+	// Pipeline sequential progression timer when protection is running
+	useEffect(() => {
+		if (!busy) {
+			if (result) {
+				setPipelinePhase(8);
+			}
+			return;
+		}
+
+		setPipelinePhase(1);
+		audioPlayRef.current("activate");
+
+		const interval = window.setInterval(() => {
+			setPipelinePhase((prev) => {
+				if (prev >= 7) return 7;
+				const next = prev + 1;
+				audioPlayRef.current("tick");
+				return next;
+			});
+		}, 480);
+
+		return () => {
+			window.clearInterval(interval);
+		};
+	}, [busy, result]);
+
 	function onFileChange(event: ChangeEvent<HTMLInputElement>) {
-		setFile(event.target.files?.[0] ?? null);
+		const chosen = event.target.files?.[0] ?? null;
+		setFile(chosen);
 		setResult(null);
 		setVerification(null);
 		setArtifactToVerify(null);
@@ -128,6 +207,10 @@ export default function Protect() {
 		setCertificate(null);
 		setDownloadMessage("");
 		setError("");
+		setPipelinePhase(0);
+		if (chosen) {
+			audio.play("upload");
+		}
 	}
 
 	async function onArtifactToVerifyChange(event: ChangeEvent<HTMLInputElement>) {
@@ -141,13 +224,18 @@ export default function Protect() {
 			setSelectedArtifactHash("");
 			return;
 		}
+		audio.play("upload");
 		try {
 			const selectedHash = await sha256Hex(selectedFile);
 			if (selectionVersion === artifactSelectionVersion.current) setSelectedArtifactHash(selectedHash);
 		} catch (hashError) {
 			if (selectionVersion === artifactSelectionVersion.current) {
 				setSelectedArtifactHash("");
-				setError(hashError instanceof Error ? `Unable to inspect the selected artifact: ${hashError.message}` : "Unable to inspect the selected artifact.");
+				setError(
+					hashError instanceof Error
+						? `Unable to inspect the selected artifact: ${hashError.message}`
+						: "Unable to inspect the selected artifact.",
+				);
 			}
 		}
 	}
@@ -157,6 +245,7 @@ export default function Protect() {
 			setDownloadMessage("The protected artifact is not available to download.");
 			return;
 		}
+		audio.play("click");
 		try {
 			const objectUrl = URL.createObjectURL(base64AsBlob(result.protected_image_base64));
 			const link = document.createElement("a");
@@ -182,6 +271,7 @@ export default function Protect() {
 		}
 		setVerificationBusy(true);
 		setError("");
+		audio.play("scan");
 		try {
 			const body = await requestApi<VerificationResult>("/api/verification", {
 				method: "POST",
@@ -196,6 +286,7 @@ export default function Protect() {
 				}),
 			});
 			setVerification(body);
+			audio.play("verify");
 		} catch (requestError) {
 			setError(requestError instanceof Error ? requestError.message : "Verification request failed");
 		} finally {
@@ -222,6 +313,7 @@ export default function Protect() {
 				}),
 			});
 			setResult(body);
+			audio.play("success");
 			const reference: VerificationReference = {
 				sourceFingerprint: body.fingerprint,
 				protectedArtifactHash: body.protected_artifact_hash,
@@ -237,29 +329,63 @@ export default function Protect() {
 			}
 		} catch (requestError) {
 			setError(requestError instanceof Error ? requestError.message : "Protection request failed");
+			setPipelinePhase(0);
 		} finally {
 			setBusy(false);
 		}
 	}
 
 	async function phase2Request<T>(path: string, options: RequestInit = {}): Promise<T> {
-		return requestApi<T>(path, { ...options, headers: { ...(options.body ? { "content-type": "application/json" } : {}), ...(mutationToken ? { authorization: `Bearer ${mutationToken}`, "x-artshield-role": "operator" } : {}), ...(options.headers ?? {}) } });
+		return requestApi<T>(path, {
+			...options,
+			headers: {
+				...(options.body ? { "content-type": "application/json" } : {}),
+				...(mutationToken ? { authorization: `Bearer ${mutationToken}`, "x-artshield-role": "operator" } : {}),
+				...(options.headers ?? {}),
+			},
+		});
 	}
 
 	async function registerProvenance() {
-		if (!result?.fingerprint) { setPhase2Message("Protect the artwork first to obtain its canonical fingerprint."); return; }
+		if (!result?.fingerprint) {
+			setPhase2Message("Protect the artwork first to obtain its canonical fingerprint.");
+			return;
+		}
 		try {
-			const body = await phase2Request<{ transactionHash: string }>("/api/artworks/register", { method: "POST", body: JSON.stringify({ artworkFingerprint: result.fingerprint, metadataHash, certificateTokenId, creator }) });
+			const body = await phase2Request<{ transactionHash: string }>("/api/artworks/register", {
+				method: "POST",
+				body: JSON.stringify({
+					artworkFingerprint: result.fingerprint,
+					metadataHash,
+					certificateTokenId,
+					creator,
+				}),
+			});
 			setPhase2Message(`Registration submitted: ${body.transactionHash}`);
-		} catch (requestError) { setPhase2Message(requestError instanceof Error ? requestError.message : "Registration failed"); }
+		} catch (requestError) {
+			setPhase2Message(requestError instanceof Error ? requestError.message : "Registration failed");
+		}
 	}
 
 	async function issueUsageRights() {
-		if (!result?.fingerprint) { setPhase2Message("Protect the artwork first to obtain its canonical fingerprint."); return; }
+		if (!result?.fingerprint) {
+			setPhase2Message("Protect the artwork first to obtain its canonical fingerprint.");
+			return;
+		}
 		try {
-			const body = await phase2Request<{ transactionHash: string }>("/api/rights", { method: "POST", body: JSON.stringify({ artworkFingerprint: result.fingerprint, grantee, rightsMask: Number(rightsMask), metadataUri: "ipfs://rights-metadata" }) });
+			const body = await phase2Request<{ transactionHash: string }>("/api/rights", {
+				method: "POST",
+				body: JSON.stringify({
+					artworkFingerprint: result.fingerprint,
+					grantee,
+					rightsMask: Number(rightsMask),
+					metadataUri: "ipfs://rights-metadata",
+				}),
+			});
 			setPhase2Message(`Rights transaction submitted: ${body.transactionHash}`);
-		} catch (requestError) { setPhase2Message(requestError instanceof Error ? requestError.message : "Rights issuance failed"); }
+		} catch (requestError) {
+			setPhase2Message(requestError instanceof Error ? requestError.message : "Rights issuance failed");
+		}
 	}
 
 	async function createCertificate() {
@@ -294,12 +420,16 @@ export default function Protect() {
 	async function lookupProvenance() {
 		try {
 			const [artwork, history] = await Promise.all([
-				phase2Request<{ currentOwner?: string; [key: number]: unknown }>(`/api/artworks/${encodeURIComponent(lookupFingerprint)}`),
+				phase2Request<{ currentOwner?: string; [key: number]: unknown }>(
+					`/api/artworks/${encodeURIComponent(lookupFingerprint)}`,
+				),
 				phase2Request<unknown[]>(`/api/artworks/${encodeURIComponent(lookupFingerprint)}/provenance`),
 			]);
 			const owner = artwork.currentOwner ?? (typeof artwork[1] === "string" ? artwork[1] : undefined) ?? "unavailable";
 			setPhase2Message(`Current owner: ${owner}; provenance entries: ${history.length}`);
-		} catch (requestError) { setPhase2Message(requestError instanceof Error ? requestError.message : "Provenance lookup failed"); }
+		} catch (requestError) {
+			setPhase2Message(requestError instanceof Error ? requestError.message : "Provenance lookup failed");
+		}
 	}
 
 	async function transferOwnership() {
@@ -316,104 +446,632 @@ export default function Protect() {
 		setTransferBusy(true);
 		setPhase2Error(false);
 		try {
-			const body = await phase2Request<{ transactionHash: string }>("/api/artworks/transfer", { method: "POST", body: JSON.stringify({ artworkFingerprint: lookupFingerprint, newOwner }) });
+			const body = await phase2Request<{ transactionHash: string }>("/api/artworks/transfer", {
+				method: "POST",
+				body: JSON.stringify({ artworkFingerprint: lookupFingerprint, newOwner }),
+			});
 			setPhase2Message(`Ownership transfer confirmed: ${body.transactionHash}`);
-		} catch (requestError) { setPhase2Error(true); setPhase2Message(requestError instanceof Error ? requestError.message : "Ownership transfer failed"); }
-		finally { setTransferBusy(false); }
+		} catch (requestError) {
+			setPhase2Error(true);
+			setPhase2Message(requestError instanceof Error ? requestError.message : "Ownership transfer failed");
+		} finally {
+			setTransferBusy(false);
+		}
 	}
 
 	async function verifyUsageRights() {
 		try {
-			const body = await phase2Request<{ valid: boolean }>(`/api/rights/${encodeURIComponent(rightsTokenId)}/verify?rightsMask=${encodeURIComponent(rightsMask)}`);
+			const body = await phase2Request<{ valid: boolean }>(
+				`/api/rights/${encodeURIComponent(rightsTokenId)}/verify?rightsMask=${encodeURIComponent(rightsMask)}`,
+			);
 			setPhase2Message(body.valid ? "Rights are currently valid." : "Rights are not valid.");
-		} catch (requestError) { setPhase2Message(requestError instanceof Error ? requestError.message : "Rights verification failed"); }
+		} catch (requestError) {
+			setPhase2Message(requestError instanceof Error ? requestError.message : "Rights verification failed");
+		}
 	}
 
 	async function revokeUsageRights() {
 		try {
-			const body = await phase2Request<{ transactionHash: string }>(`/api/rights/${encodeURIComponent(rightsTokenId)}/revoke`, { method: "POST" });
+			const body = await phase2Request<{ transactionHash: string }>(
+				`/api/rights/${encodeURIComponent(rightsTokenId)}/revoke`,
+				{ method: "POST" },
+			);
 			setPhase2Message(`Revocation submitted: ${body.transactionHash}`);
-		} catch (requestError) { setPhase2Message(requestError instanceof Error ? requestError.message : "Rights revocation failed"); }
+		} catch (requestError) {
+			setPhase2Message(requestError instanceof Error ? requestError.message : "Rights revocation failed");
+		}
 	}
 
+	const mappedVerificationResult: VerificationResultData | null = useMemo(() => {
+		if (!verification) return null;
+		return {
+			authentic: verification.authentic,
+			integrityVerified: verification.authentic,
+			tamperDetected: !verification.authentic,
+			sha256Matched: verification.authentic,
+			fingerprintMatched: verification.fingerprint_match,
+			watermarkMatched: verification.watermark_match === true,
+			confidence: verification.authentic ? 0.99 : 0.15,
+			details: verification.reasons.length ? verification.reasons.join("; ") : undefined,
+			referenceId: verificationReferences[selectedArtifactHash]?.sourceFingerprint.slice(0, 16),
+		};
+	}, [verification, verificationReferences, selectedArtifactHash]);
+
 	return (
-		<div className="legacy-tool">
-		<main className="shell">
-			<Link to="/" className="back-link">← ArtShield</Link>
-			<section className="intro">
-				<p className="eyebrow">ARTSHIELD / EXHIBITION MODE</p>
-				<h1>Protect an artwork with verifiable evidence.</h1>
-				<p className="lede">Upload a source, run the real protection service, and verify the protected artifact against its recorded integrity reference.</p>
-			</section>
-			<section className="workspace" aria-label="Artwork protection">
-				<form className="panel" onSubmit={protect}>
-					<label className="dropzone">
-						<span>Artwork file</span>
-						<input type="file" accept="image/png,image/jpeg,image/webp" onChange={onFileChange} />
-						<strong>{file?.name ?? "Choose an image"}</strong>
-						<small>PNG, JPEG, or WebP. Maximum 10 MiB.</small>
-					</label>
-					<label>Title<input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} /></label>
-					<label>Artist<input value={artist} onChange={(event) => setArtist(event.target.value)} maxLength={200} /></label>
-					<label>Watermark<input value={watermark} onChange={(event) => setWatermark(event.target.value)} maxLength={2048} required /></label>
-					<button type="submit" disabled={busy}>{busy ? "Working..." : "Protect artwork"}</button>
-					<label>Artifact to verify<input type="file" accept="image/png" onChange={onArtifactToVerifyChange} /></label>
-					<button className="secondary" type="button" onClick={verifySelectedArtwork} disabled={verificationBusy || !artifactToVerify || !verificationReferences[selectedArtifactHash]}>{verificationBusy ? "Working..." : "Verify protected artifact"}</button>
-					{artifactToVerify && !verificationReferences[selectedArtifactHash] && <p className="muted" role="status">No verification reference available for this artifact. Protect it first or load its saved reference.</p>}
-					{error && <p className="error" role="alert">{error}</p>}
-				</form>
-				<aside className="panel result" aria-live="polite">
-					<p className="eyebrow">RESULT</p>
-					{result ? (
-						<>
-							<img src={`data:image/png;base64,${result.protected_image_base64}`} alt="Protected artwork" />
-							<dl>
-								<dt>Source SHA-256 fingerprint</dt>
-								<dd>{result.fingerprint}</dd>
-								<dt>Protected artifact hash</dt>
-								<dd>{result.protected_artifact_hash}</dd>
-								<dt>Embedded watermark</dt>
-								<dd>{result.watermark}</dd>
-							</dl>
-							<button type="button" onClick={downloadProtectedArtifact}>Download protected artifact</button>
-							{downloadMessage && <p className={downloadMessage.startsWith("Download failed") || downloadMessage.startsWith("The protected") ? "error" : "download-success"} role={downloadMessage.startsWith("Download failed") || downloadMessage.startsWith("The protected") ? "alert" : "status"}>{downloadMessage}</p>}
-						</>
-					) : <p className="muted">Your protected artifact and evidence will appear here.</p>}
-					{verification && <div className={`verification ${verification.authentic ? "verified" : "tampered"}`}><strong>{verification.authentic ? "INTEGRITY VERIFIED" : "TAMPERING DETECTED"}</strong><span>{verification.reasons.length ? verification.reasons.join("; ") : "Selected artwork matches the submitted fingerprint."}</span></div>}
-				</aside>
-			</section>
-			<section className="status-band" aria-label="Implementation status">
-				<div><strong>CORE PROTECTION</strong><span>Layers 1–5 active in the ML workflow</span></div>
-				<div><strong>OWNERSHIP & RIGHTS</strong><span>Layers 6–7 available through configured blockchain APIs</span></div>
-				<div><strong>AI SECURITY RESEARCH</strong><span>Layers 8–12 controlled research endpoints</span></div>
-				<div><strong>ADVANCED ANALYSIS</strong><span>Layers 13–15 defensive endpoints; not part of upload protection</span></div>
-			</section>
-			<section className="workspace" aria-label="Ownership and usage rights">
-				<section className="panel">
-					<p className="eyebrow">PHASE 2 / PROVENANCE / DEMO-LOCAL AUTH</p>
-					<label>Demo mutation token<input type="password" value={mutationToken} onChange={(event) => setMutationToken(event.target.value)} placeholder="Provided by the local backend operator" /></label>
-					<label>Creator wallet<input value={creator} onChange={(event) => setCreator(event.target.value)} placeholder="0x..." /></label>
-					<label>Metadata hash<input value={metadataHash} onChange={(event) => setMetadataHash(event.target.value)} placeholder="0x + 64 hex characters" /></label>
-					<label>Certificate token ID<input value={certificateTokenId} onChange={(event) => setCertificateTokenId(event.target.value)} /></label>
-					<button type="button" onClick={createCertificate} disabled={certificateBusy}>{certificateBusy ? "Submitting..." : "Create certificate"}</button>
-					<button type="button" onClick={registerProvenance}>Register provenance</button>
-					{certificate && <dl><dt>Certificate token</dt><dd>{certificate.tokenId}</dd><dt>Transaction</dt><dd>{certificate.transactionHash}</dd><dt>Network</dt><dd>Chain {certificate.chainId}</dd><dt>Contract</dt><dd>{certificate.contractAddress}</dd></dl>}
-					<label>Lookup fingerprint<input value={lookupFingerprint} onChange={(event) => setLookupFingerprint(event.target.value)} placeholder="64 hex characters" /></label>
-					<button type="button" onClick={lookupProvenance}>Lookup ownership and provenance</button>
-					<label>New owner address<input value={newOwner} onChange={(event) => setNewOwner(event.target.value)} placeholder="0x..." /></label>
-					<button type="button" onClick={transferOwnership} disabled={transferBusy}>{transferBusy ? "Submitting..." : "Transfer ownership"}</button>
-					<p className="muted">The backend submits the transaction only when blockchain configuration and signer authorization are available.</p>
+		<div className="pc-page">
+			{/* Fixed Atmospheric Cinematic Background */}
+			<CinematicBackground reducedMotion={reducedMotion} />
+
+			{/* Navigation Header */}
+			<header>
+				<nav className="pc-nav" aria-label="Main Navigation">
+					<Link to="/" className="pc-nav__brand">
+						<div className="pc-nav__logo-mark">
+							<svg
+								className="pc-nav__logo-svg"
+								viewBox="0 0 24 24"
+								fill="none"
+								xmlns="http://www.w3.org/2000/svg"
+							>
+								<path
+									d="M12 2L3 7V12C3 17.5228 6.94165 22.5027 12 23.9443C17.0583 22.5027 21 17.5228 21 12V7L12 2Z"
+									stroke="currentColor"
+									strokeWidth="2"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+								/>
+								<path
+									d="M9 12L11 14L15 10"
+									stroke="currentColor"
+									strokeWidth="2"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+								/>
+							</svg>
+						</div>
+						<div className="pc-nav__brand-info">
+							<span className="pc-nav__brand-title">ARTSHIELD</span>
+							<span className="pc-nav__brand-subtitle">EXHIBITION SECURITY SUITE</span>
+						</div>
+					</Link>
+
+					<div className="pc-nav__links">
+						<Link to="/" className="pc-nav__link">
+							Home
+						</Link>
+						<span className="pc-nav__link pc-nav__link--active">
+							Protection Suite
+						</span>
+					</div>
+
+					<div className="pc-nav__actions">
+						<button
+							type="button"
+							onClick={audio.toggleSound}
+							className={`pc-sound-toggle ${!audio.enabled ? "pc-sound-toggle--muted" : ""}`}
+							title={audio.enabled ? "Mute audio feedback" : "Enable audio feedback"}
+							aria-label={audio.enabled ? "Mute interface sound" : "Enable interface sound"}
+						>
+							<svg
+								className="pc-sound-toggle__icon"
+								viewBox="0 0 16 16"
+								fill="none"
+								xmlns="http://www.w3.org/2000/svg"
+							>
+								{audio.enabled ? (
+									<path
+										d="M8 2.5L4.5 5.5H2V10.5H4.5L8 13.5V2.5ZM10.5 5.5C11.5 6.5 12 7.5 12 8C12 8.5 11.5 9.5 10.5 10.5M12.5 3.5C14 5 15 6.5 15 8C15 9.5 14 11 12.5 12.5"
+										stroke="currentColor"
+										strokeWidth="1.3"
+										strokeLinecap="round"
+										strokeLinejoin="round"
+									/>
+								) : (
+									<path
+										d="M8 2.5L4.5 5.5H2V10.5H4.5L8 13.5V2.5ZM11.5 6.5L14.5 9.5M14.5 6.5L11.5 9.5"
+										stroke="currentColor"
+										strokeWidth="1.3"
+										strokeLinecap="round"
+										strokeLinejoin="round"
+									/>
+								)}
+							</svg>
+							<span>{audio.enabled ? "SOUND ON" : "MUTED"}</span>
+						</button>
+					</div>
+				</nav>
+			</header>
+
+			{/* Main Workspace Area */}
+			<main className="pc-main">
+				{/* Cinematic Hero Header */}
+				<section className="pc-hero-header" aria-labelledby="hero-title">
+					<div className="pc-tag pc-tag--cyan">
+						<span className="pc-tag__dot" />
+						<span>ADVANCED DIGITAL WATERMARKING & VERIFICATION</span>
+					</div>
+					<h1 id="hero-title" className="pc-hero-header__title">
+						Cryptographic Shield for Digital Masterworks.
+					</h1>
+					<p className="pc-hero-header__lead">
+						Empowering artists, galleries, and institutions with dual-layer latent watermarks,
+						non-destructive perceptual encoding, and mathematical SHA-256 integrity proofs.
+					</p>
 				</section>
-				<section className="panel">
-					<p className="eyebrow">PHASE 2 / USAGE RIGHTS</p>
-					<label>Grantee wallet<input value={grantee} onChange={(event) => setGrantee(event.target.value)} placeholder="0x..." /></label>
-					<label>Rights mask<input type="number" min="1" max="63" value={rightsMask} onChange={(event) => setRightsMask(event.target.value)} /></label>
-					<label>Rights token ID<input value={rightsTokenId} onChange={(event) => setRightsTokenId(event.target.value)} placeholder="Token ID for verify/revoke" /></label>
-					<div className="button-row"><button type="button" onClick={issueUsageRights}>Issue rights</button><button type="button" onClick={verifyUsageRights}>Verify rights</button><button type="button" onClick={revokeUsageRights}>Revoke rights</button></div>
-					{phase2Message && <p className={phase2Error ? "error" : "muted"} role={phase2Error ? "alert" : "status"}>{phase2Message}</p>}
+
+				{/* Primary Protection Workspace (Upload + Controls) */}
+				<section className="pc-workspace" aria-label="Artwork Protection Controls">
+					{/* Left: Interactive Dropzone / Upload Preview Card */}
+					<div ref={uploadCardRef} className="pc-glass-card" data-parallax-target="true">
+						<div className="pc-glass-card__header">
+							<span className="pc-tag">STEP 01</span>
+							<h2 className="pc-glass-card__title">Ingest Master Asset</h2>
+							<p className="pc-glass-card__desc">
+								Select or drop the original high-resolution artwork for mathematical protection.
+							</p>
+						</div>
+
+						<input
+							ref={fileInputRef}
+							type="file"
+							accept="image/png,image/jpeg,image/webp"
+							onChange={onFileChange}
+							className="pc-hidden-input"
+							id="artwork-file-input"
+						/>
+
+						{!file ? (
+							<div
+								className={`pc-dropzone ${isDropActive ? "pc-dropzone--active" : ""}`}
+								onDragOver={(e) => {
+									e.preventDefault();
+									setIsDropActive(true);
+								}}
+								onDragLeave={() => setIsDropActive(false)}
+								onDrop={(e) => {
+									e.preventDefault();
+									setIsDropActive(false);
+									if (e.dataTransfer.files?.[0]) {
+										const fakeEvent = {
+											target: { files: e.dataTransfer.files },
+										} as unknown as ChangeEvent<HTMLInputElement>;
+										onFileChange(fakeEvent);
+									}
+								}}
+								onClick={() => fileInputRef.current?.click()}
+								role="button"
+								tabIndex={0}
+								onKeyDown={(e) => {
+									if (e.key === "Enter" || e.key === " ") {
+										fileInputRef.current?.click();
+									}
+								}}
+							>
+								<div className="pc-dropzone__reticle">
+									<svg
+										className="pc-dropzone__reticle-icon"
+										viewBox="0 0 24 24"
+										fill="none"
+										xmlns="http://www.w3.org/2000/svg"
+									>
+										<path
+											d="M12 16V8M12 8L9 11M12 8L15 11M4 16V17C4 18.6569 5.34315 20 7 20H17C18.6569 20 20 18.6569 20 17V16"
+											stroke="currentColor"
+											strokeWidth="1.6"
+											strokeLinecap="round"
+											strokeLinejoin="round"
+										/>
+									</svg>
+								</div>
+								<div>
+									<span className="pc-dropzone__headline">Drop Artwork Here</span>
+									<span className="pc-dropzone__sub">PNG, JPEG, WebP up to 10 MiB</span>
+								</div>
+								<span className="pc-dropzone__cta">BROWSE LOCAL STORAGE</span>
+							</div>
+						) : (
+							<div className="pc-selected-file">
+								{filePreviewUrl && (
+									<div className="pc-selected-file__preview-wrap">
+										<img src={filePreviewUrl} alt="Selected artwork" className="pc-selected-file__img" />
+									</div>
+								)}
+								<div className="pc-selected-file__bar">
+									<span className="pc-selected-file__name">{file.name}</span>
+									<span className="pc-selected-file__size">
+										{(file.size / (1024 * 1024)).toFixed(2)} MB
+									</span>
+									<button
+										type="button"
+										className="pc-selected-file__change-btn"
+										onClick={() => fileInputRef.current?.click()}
+									>
+										REPLACE
+									</button>
+								</div>
+							</div>
+						)}
+					</div>
+
+					{/* Right: Security Parameters & Execution */}
+					<div className="pc-glass-card">
+						<div className="pc-glass-card__header">
+							<span className="pc-tag">STEP 02</span>
+							<h2 className="pc-glass-card__title">Security Configuration</h2>
+							<p className="pc-glass-card__desc">
+								Define cryptographic watermark payload and immutable metadata attributes.
+							</p>
+						</div>
+
+						<form onSubmit={protect} className="pc-glass-card" style={{ padding: 0, background: "none", border: "none", boxShadow: "none" }}>
+							<div className="pc-form-group">
+								<label className="pc-form-label" htmlFor="title-input">
+									ARTWORK TITLE
+								</label>
+								<input
+									id="title-input"
+									className="pc-input"
+									value={title}
+									onChange={(event) => setTitle(event.target.value)}
+									maxLength={200}
+									placeholder="e.g. Genesis Protocol #01"
+								/>
+							</div>
+
+							<div className="pc-form-group">
+								<label className="pc-form-label" htmlFor="artist-input">
+									CREATOR / ARTIST
+								</label>
+								<input
+									id="artist-input"
+									className="pc-input"
+									value={artist}
+									onChange={(event) => setArtist(event.target.value)}
+									maxLength={200}
+									placeholder="e.g. Satoshi Studio / Anonymous"
+								/>
+							</div>
+
+							<div className="pc-form-group">
+								<label className="pc-form-label" htmlFor="watermark-input">
+									LATENT WATERMARK PAYLOAD
+								</label>
+								<input
+									id="watermark-input"
+									className="pc-input"
+									value={watermark}
+									onChange={(event) => setWatermark(event.target.value)}
+									maxLength={2048}
+									required
+									placeholder="e.g. ArtShield-Signed-2026"
+								/>
+							</div>
+
+							<div className="pc-toggle-row">
+								<div className="pc-toggle-label">
+									<span className="pc-toggle-title">Zero-Loss Frequency Hardening</span>
+									<span className="pc-toggle-sub">
+										High-fidelity protection resistant to compression & cropping
+									</span>
+								</div>
+								<label className="pc-switch" aria-label="Toggle Zero-Loss Frequency Hardening">
+									<input
+										type="checkbox"
+										checked={tamperResistant}
+										onChange={(e) => setTamperResistant(e.target.checked)}
+									/>
+									<span className="pc-switch__slider" />
+								</label>
+							</div>
+
+							<button
+								type="submit"
+								disabled={busy || !file}
+								className={`pc-btn pc-btn--primary pc-btn--full ${busy ? "pc-btn--busy" : ""}`}
+							>
+								{busy ? (
+									<>
+										<span className="pc-spinner pc-spinner--sm" />
+										<span>PROTECTING ASSET IN PIPELINE...</span>
+									</>
+								) : (
+									<>
+										<svg
+											className="pc-btn__icon"
+											viewBox="0 0 20 20"
+											fill="none"
+											xmlns="http://www.w3.org/2000/svg"
+										>
+											<path
+												d="M10 2L3 5.5V9.5C3 13.642 6.002 17.377 10 18.455C13.998 17.377 17 13.642 17 9.5V5.5L10 2Z"
+												stroke="currentColor"
+												strokeWidth="1.7"
+												strokeLinecap="round"
+												strokeLinejoin="round"
+											/>
+										</svg>
+										<span>EXECUTE ZERO-LOSS PROTECTION</span>
+									</>
+								)}
+							</button>
+						</form>
+
+						{error && (
+							<div className="pc-error-banner" role="alert">
+								<svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+									<circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="1.5" />
+									<path d="M10 6V11M10 14V14.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+								</svg>
+								<span>{error}</span>
+							</div>
+						)}
+					</div>
 				</section>
-			</section>
-		</main>
+
+				{/* 7-Step Animated Protection Pipeline */}
+				<ProtectionPipeline
+					phase={pipelinePhase}
+					busy={busy}
+					hasResult={Boolean(result)}
+					reducedMotion={reducedMotion}
+				/>
+
+				{/* Protected Result Showcase (Hero 3D floating canvas + Security certificate) */}
+				{result && (
+					<CinematicProtectionResult
+						imageDataUrl={`data:image/png;base64,${result.protected_image_base64}`}
+						sha256={result.protected_artifact_hash}
+						fingerprintHex={result.fingerprint}
+						watermark={result.watermark}
+						title={title}
+						artist={artist}
+						timestamp={new Date().toISOString()}
+						tamperResistant={tamperResistant}
+						verifiedAuthentic={true}
+						onDownload={downloadProtectedArtifact}
+						reducedMotion={reducedMotion}
+					/>
+				)}
+
+				{downloadMessage && (
+					<div
+						className={`pc-status-msg ${downloadMessage.startsWith("Download failed") || downloadMessage.startsWith("The protected") ? "pc-error-banner" : ""}`}
+						role={downloadMessage.startsWith("Download failed") ? "alert" : "status"}
+					>
+						{downloadMessage}
+					</div>
+				)}
+
+				{/* Two-Column Verification Suite */}
+				<VerificationSection
+					artifactFile={artifactToVerify}
+					artifactPreview={artifactPreviewUrl}
+					artifactHash={selectedArtifactHash}
+					verificationResult={mappedVerificationResult}
+					verificationError={error && artifactToVerify ? error : null}
+					busy={verificationBusy}
+					onFileChange={onArtifactToVerifyChange}
+					onVerify={verifySelectedArtwork}
+					reducedMotion={reducedMotion}
+				/>
+
+				{/* Advanced Provenance & Rights Terminal Accordion */}
+				<section className="pc-advanced" aria-label="Advanced Provenance and Rights Management">
+					<details className="pc-details">
+						<summary className="pc-summary">
+							<div className="pc-summary__left">
+								<span className="pc-summary__tag">DECENTRALIZED REGISTRY & RIGHTS</span>
+								<h3 className="pc-summary__title">Advanced Provenance Terminal</h3>
+							</div>
+							<svg
+								className="pc-summary__icon"
+								viewBox="0 0 24 24"
+								fill="none"
+								xmlns="http://www.w3.org/2000/svg"
+							>
+								<path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+							</svg>
+						</summary>
+
+						<div className="pc-advanced-content">
+							<div className="pc-workspace">
+								{/* Left Sub-card: Provenance & Certificates */}
+								<div className="pc-sub-card">
+									<h4 className="pc-sub-card__title">Provenance & Certificates</h4>
+
+									{usesLocalDemoProxy ? (
+										<p className="pc-form-label" role="status">
+											LOCAL DEMO CREDENTIAL ACTIVE — supplied securely by the development server and never exposed to this browser.
+										</p>
+									) : (
+										<div className="pc-form-group">
+											<label className="pc-form-label">DEMO MUTATION TOKEN</label>
+											<input
+												type="password"
+												className="pc-input"
+												value={mutationToken}
+												onChange={(event) => setMutationToken(event.target.value)}
+												placeholder="Local backend operator credential"
+											/>
+										</div>
+									)}
+
+									<div className="pc-form-group">
+										<label className="pc-form-label">CREATOR WALLET</label>
+										<input
+											className="pc-input"
+											value={creator}
+											onChange={(event) => setCreator(event.target.value)}
+											placeholder="0x…"
+										/>
+									</div>
+
+									<div className="pc-form-group">
+										<label className="pc-form-label">METADATA HASH</label>
+										<input
+											className="pc-input"
+											value={metadataHash}
+											onChange={(event) => setMetadataHash(event.target.value)}
+											placeholder="0x + 64 hex characters"
+										/>
+									</div>
+
+									<div className="pc-form-group">
+										<label className="pc-form-label">CERTIFICATE TOKEN ID</label>
+										<input
+											className="pc-input"
+											value={certificateTokenId}
+											onChange={(event) => setCertificateTokenId(event.target.value)}
+										/>
+									</div>
+
+									<div style={{ display: "flex", gap: "1rem" }}>
+										<button
+											type="button"
+											onClick={createCertificate}
+											disabled={certificateBusy}
+											className="pc-btn pc-btn--primary"
+											style={{ flex: 1 }}
+										>
+											{certificateBusy ? "Submitting…" : "Create Certificate"}
+										</button>
+										<button
+											type="button"
+											onClick={registerProvenance}
+											className="pc-btn pc-btn--secondary"
+											style={{ flex: 1 }}
+										>
+											Register Provenance
+										</button>
+									</div>
+
+									{certificate && (
+										<div className="pc-hash-box">
+											<span className="pc-hash-box__label">ON-CHAIN CERTIFICATE DETAILS</span>
+											<div className="pc-hash-box__value">
+												<code>Token ID: {certificate.tokenId}</code>
+												<br />
+												<code>Tx: {certificate.transactionHash}</code>
+												<br />
+												<code>Chain: {certificate.chainId}</code>
+												<br />
+												<code>Contract: {certificate.contractAddress}</code>
+											</div>
+										</div>
+									)}
+
+									<div className="pc-form-group" style={{ marginTop: "1rem" }}>
+										<label className="pc-form-label">LOOKUP FINGERPRINT</label>
+										<input
+											className="pc-input"
+											value={lookupFingerprint}
+											onChange={(event) => setLookupFingerprint(event.target.value)}
+											placeholder="64 hex characters"
+										/>
+									</div>
+
+									<button
+										type="button"
+										onClick={lookupProvenance}
+										className="pc-btn pc-btn--secondary"
+									>
+										Lookup Ownership & Provenance
+									</button>
+
+									<div className="pc-form-group">
+										<label className="pc-form-label">NEW OWNER ADDRESS</label>
+										<input
+											className="pc-input"
+											value={newOwner}
+											onChange={(event) => setNewOwner(event.target.value)}
+											placeholder="0x…"
+										/>
+									</div>
+
+									<button
+										type="button"
+										onClick={transferOwnership}
+										disabled={transferBusy}
+										className="pc-btn pc-btn--secondary"
+									>
+										{transferBusy ? "Submitting…" : "Transfer Ownership"}
+									</button>
+								</div>
+
+								{/* Right Sub-card: Usage Rights */}
+								<div className="pc-sub-card">
+									<h4 className="pc-sub-card__title">Licensing & Usage Rights</h4>
+
+									<div className="pc-form-group">
+										<label className="pc-form-label">GRANTEE WALLET</label>
+										<input
+											className="pc-input"
+											value={grantee}
+											onChange={(event) => setGrantee(event.target.value)}
+											placeholder="0x…"
+										/>
+									</div>
+
+									<div className="pc-form-group">
+										<label className="pc-form-label">RIGHTS MASK</label>
+										<input
+											type="number"
+											className="pc-input"
+											min="1"
+											max="63"
+											value={rightsMask}
+											onChange={(event) => setRightsMask(event.target.value)}
+										/>
+									</div>
+
+									<div className="pc-form-group">
+										<label className="pc-form-label">RIGHTS TOKEN ID</label>
+										<input
+											className="pc-input"
+											value={rightsTokenId}
+											onChange={(event) => setRightsTokenId(event.target.value)}
+											placeholder="Token ID for verify or revoke"
+										/>
+									</div>
+
+									<div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginTop: "1rem" }}>
+										<button
+											type="button"
+											onClick={issueUsageRights}
+											className="pc-btn pc-btn--primary"
+										>
+											Issue Usage Rights
+										</button>
+										<button
+											type="button"
+											onClick={verifyUsageRights}
+											className="pc-btn pc-btn--secondary"
+										>
+											Verify Rights
+										</button>
+										<button
+											type="button"
+											onClick={revokeUsageRights}
+											className="pc-btn pc-btn--secondary"
+										>
+											Revoke Rights
+										</button>
+									</div>
+								</div>
+							</div>
+
+							{phase2Message && (
+								<div
+									className={`pc-status-msg ${phase2Error ? "pc-error-banner" : ""}`}
+									role={phase2Error ? "alert" : "status"}
+								>
+									{phase2Message}
+								</div>
+							)}
+						</div>
+					</details>
+				</section>
+			</main>
 		</div>
 	);
 }

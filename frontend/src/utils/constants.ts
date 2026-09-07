@@ -3,17 +3,20 @@ import type { ProtectionStage } from "../types/layer";
 export const ROUTES = {
 	home: "/",
 	protect: "/protect",
+	pricing: "/pricing",
 } as const;
 
 export const BRAND = {
 	name: "ARTSHIELD",
 	tagline: "PROTECT. PROVE. CONTROL.",
+	tagline: "PROTECT THE ART. PROVE THE ORIGINAL.",
 } as const;
 
 export type NavLink = {
 	label: string;
 	href: string;
 	placeholder?: boolean;
+	isRoute?: boolean;
 };
 
 export const NAV_LINKS: NavLink[] = [
@@ -22,6 +25,8 @@ export const NAV_LINKS: NavLink[] = [
 	{ label: "Technology", href: "/#technology" },
 	{ label: "Provenance", href: "/#provenance" },
 	{ label: "Pricing", href: "#", placeholder: true },
+	{ label: "Verification", href: "/#verification" },
+	{ label: "Pricing", href: "/pricing", isRoute: true },
 ];
 
 export const CAPABILITIES = [
@@ -72,5 +77,78 @@ export const PROTECTION_STAGES: ProtectionStage[] = [
 		title: "Integrity verification",
 		technical: "Integrity · Tamper assessment",
 		description: "Any protected artifact can be hashed and checked against its recorded reference. The answer is unambiguous: integrity verified, or tampering detected.",
+	},
+];
+
+export interface PricingTier {
+	id: string;
+	name: string;
+	tag: string;
+	price: string;
+	period: string;
+	description: string;
+	features: string[];
+	highlighted?: boolean;
+	ctaText: string;
+	ctaLink: string;
+}
+
+export const PRICING_TIERS: PricingTier[] = [
+	{
+		id: "explorer",
+		name: "Explorer",
+		tag: "OPEN ACCESS",
+		price: "$0",
+		period: "Free Forever",
+		description: "Essential cryptographic protection and tamper verification for individual digital artists and students.",
+		features: [
+			"Up to 10 artwork protections / month",
+			"SHA-256 cryptographic fingerprinting",
+			"Standard spatial watermark embedding",
+			"Browser-based parity verification",
+			"Local verification ledger persistence",
+			"Standard PNG artifact export",
+		],
+		ctaText: "Start Protecting Free",
+		ctaLink: "/protect",
+	},
+	{
+		id: "creator",
+		name: "Creator",
+		tag: "PROFESSIONAL",
+		price: "$29",
+		period: "per month",
+		description: "High-frequency perturbation hardening, on-chain provenance registration, and unlimited artifact generation.",
+		features: [
+			"Unlimited artwork protections",
+			"Zero-loss frequency domain hardening",
+			"Imperceptible latent-space watermarking",
+			"On-chain certificate of authenticity issuance",
+			"Immutable ownership registration",
+			"High-resolution 4K/8K batch processing",
+			"Permanent cryptographic audit reference",
+		],
+		highlighted: true,
+		ctaText: "Launch Creator Suite",
+		ctaLink: "/protect",
+	},
+	{
+		id: "studio",
+		name: "Studio",
+		tag: "ENTERPRISE & INSTITUTIONS",
+		price: "$149",
+		period: "per month",
+		description: "Comprehensive licensing management, dynamic usage rights, custom Hardhat nodes, and automated verification APIs.",
+		features: [
+			"Everything in Creator tier",
+			"Granular smart-contract usage rights management",
+			"Multi-party ownership transfers & delegations",
+			"Automated webhook & REST API access",
+			"Custom private ledger integration",
+			"Priority ML-service pipeline queue",
+			"Dedicated security SLA & onboarding",
+		],
+		ctaText: "Access Studio Suite",
+		ctaLink: "/protect",
 	},
 ];
