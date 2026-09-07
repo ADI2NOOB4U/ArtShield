@@ -1,0 +1,43 @@
+/*
+ * Styles for the existing exhibition protect/verify tool (now served at /protect).
+ * Scoped under .legacy-tool so they do not leak into the redesigned marketing pages,
+ * and so Tailwind's preflight does not alter the tool's original appearance.
+ */
+.legacy-tool { min-width: 320px; color: #17231f; background: #e8eee9; font-family: "DM Sans", sans-serif; }
+.legacy-tool * { box-sizing: border-box; }
+.legacy-tool p { margin: 1em 0; }
+.legacy-tool dl { margin: 1em 0; }
+.legacy-tool .shell { min-height: 100vh; padding: 8vw; background: radial-gradient(circle at 85% 10%, #f6d6a7 0, transparent 28%), linear-gradient(135deg, #e8eee9, #c9ddd4); }
+.legacy-tool .back-link { display: inline-block; margin: 0 0 32px; color: #17231f; font-size: .8rem; font-weight: 700; letter-spacing: .12em; text-decoration: none; text-transform: uppercase; }
+.legacy-tool .back-link:hover { color: #a44f2b; }
+.legacy-tool .intro { max-width: 760px; margin-bottom: 48px; }
+.legacy-tool .eyebrow { margin: 0 0 12px; color: #a44f2b; font-size: .75rem; font-weight: 700; letter-spacing: .12em; }
+.legacy-tool h1 { max-width: 720px; margin: 0; font-family: "Space Grotesk", sans-serif; font-size: clamp(2.5rem, 7vw, 6rem); font-weight: 700; line-height: .96; }
+.legacy-tool .lede { max-width: 540px; margin: 24px 0 0; font-size: 1.1rem; }
+.legacy-tool .workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; max-width: 1100px; }
+.legacy-tool .panel { padding: 24px; border: 1px solid rgba(23,35,31,.18); border-radius: 8px; background: rgba(255,255,255,.58); box-shadow: 0 18px 50px rgba(35,67,55,.12); }
+.legacy-tool label { display: grid; gap: 7px; margin-top: 16px; font-weight: 700; }
+.legacy-tool input { width: 100%; padding: 12px; border: 1px solid #9bb5a9; border-radius: 4px; background: #f8fbf8; font: inherit; }
+.legacy-tool .dropzone { min-height: 170px; place-content: center; padding: 20px; border: 1px dashed #5c8778; text-align: center; background: rgba(221,239,230,.7); }
+.legacy-tool .dropzone input { border: 0; padding: 0; background: transparent; }
+.legacy-tool .dropzone small { font-weight: 400; }
+.legacy-tool button { width: 100%; margin-top: 24px; padding: 14px; border: 0; border-radius: 4px; color: #fff; background: #a44f2b; font: inherit; font-weight: 700; cursor: pointer; }
+.legacy-tool button:disabled { opacity: .55; cursor: wait; }
+.legacy-tool .secondary { margin-top: 10px; color: #17231f; background: transparent; border: 1px solid #5c8778; }
+.legacy-tool .result { min-height: 440px; }
+.legacy-tool .result img { width: 100%; max-height: 360px; object-fit: contain; border-radius: 4px; background: #d4dfd8; }
+.legacy-tool dl { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.legacy-tool dt { color: #597065; font-size: .75rem; font-weight: 700; text-transform: uppercase; }
+.legacy-tool dd { margin: 0 0 12px; overflow-wrap: anywhere; font-family: monospace; font-size: .82rem; }
+.legacy-tool .muted { color: #597065; }
+.legacy-tool .error { color: #8d2e24; font-weight: 700; }
+.legacy-tool .download-success { color: #2e6d4f; font-weight: 700; }
+.legacy-tool .verification { display: grid; gap: 5px; margin-top: 18px; padding: 12px; border-left: 4px solid #5c8778; background: #e4f1e8; }
+.legacy-tool .verification span { font-size: .9rem; }
+.legacy-tool .verification.tampered { border-color: #a44f2b; background: #f8e5d9; }
+.legacy-tool .status-band { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; max-width: 1100px; margin-top: 20px; }
+.legacy-tool .status-band div { display: grid; gap: 6px; padding: 16px; border-top: 3px solid #5c8778; background: rgba(255,255,255,.42); }
+.legacy-tool .status-band span { color: #597065; font-size: .85rem; }
+@media (max-width: 760px) { .legacy-tool .shell { padding: 32px 20px; } .legacy-tool .workspace { grid-template-columns: 1fr; } .legacy-tool h1 { font-size: 3.2rem; } }
+@media (max-width: 900px) { .legacy-tool .status-band { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { .legacy-tool .status-band { grid-template-columns: 1fr; } }
