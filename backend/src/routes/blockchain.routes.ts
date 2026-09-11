@@ -4,6 +4,6 @@ import { createCertificate } from "../controllers/blockchain.controller.js";
 import { requireMutationAuth } from "../middleware/mutation-auth.middleware.js";
 
 const router = Router();
-router.post("/certificates", requireMutationAuth, createCertificate);
+router.post("/certificates", requireMutationAuth("registry"), createCertificate);
 
 export default router;

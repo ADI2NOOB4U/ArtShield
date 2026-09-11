@@ -15,7 +15,7 @@ export async function requireTurnstile(request: Request, response: Response, nex
 		return;
 	}
 	try {
-		const form = new URLSearchParams({ secret, response: token, remoteip: request.ip });
+		const form = new URLSearchParams({ secret, response: token, ...(request.ip ? { remoteip: request.ip } : {}) });
 		const verification = await fetch(VERIFY_URL, { method: "POST", body: form, signal: AbortSignal.timeout(5000) });
 		const result = await verification.json() as { success?: boolean; hostname?: string };
 		const expectedHost = process.env.TURNSTILE_EXPECTED_HOSTNAME;

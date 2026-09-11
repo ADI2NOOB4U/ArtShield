@@ -169,14 +169,14 @@ app.get("/api/system-status", async (_request, response) => {
 	const blockchain = rpcUrl ? await reachable(rpcUrl, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_chainId", params: [] }) }) : false;
 	response.json({ backend: true, ml, blockchain });
 });
-app.post("/api/protection", requireMutationAuth, expensiveLimiter, async (request, response, next) => {
+app.post("/api/protection", requireMutationAuth("protection"), expensiveLimiter, async (request, response, next) => {
 	try {
 		response.json(await callMl("/v1/protect", request.body as ProtectionBody));
 	} catch (error) {
 		next(error);
 	}
 });
-app.post("/api/verification", requireMutationAuth, expensiveLimiter, async (request, response, next) => {
+app.post("/api/verification", requireMutationAuth("protection"), expensiveLimiter, async (request, response, next) => {
 	try {
 		response.json(await callMl("/v1/verify", request.body as VerificationBody));
 	} catch (error) {
@@ -184,7 +184,7 @@ app.post("/api/verification", requireMutationAuth, expensiveLimiter, async (requ
 	}
 });
 for (const [route, mlPath] of [["/api/security/model-inversion", "/v1/security/model-inversion"], ["/api/security/prompt-check", "/v1/security/prompt-check"], ["/api/security/file-check", "/v1/security/file-check"]] as const) {
-	app.post(route, requireMutationAuth, expensiveLimiter, async (request, response, next) => {
+	app.post(route, requireMutationAuth("protection"), expensiveLimiter, async (request, response, next) => {
 		try {
 			response.json(await callSecurity(mlPath, request.body));
 		} catch (error) {
