@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { apiUrl } from "../../services/api";
 
 export type ArtifactEvent = { at: string; label: string; detail: string };
 export type ProvenanceRecord = {
@@ -88,7 +89,7 @@ export function ArtifactIntelligence({
 
 	useEffect(() => {
 		let cancelled = false;
-		fetch(`${apiBase}/api/system-status`)
+		fetch(apiUrl("/api/system-status"))
 			.then(async (response) => {
 				if (!response.ok) throw new Error();
 				return response.json() as Promise<{ backend: boolean; ml: boolean; blockchain: boolean }>;

@@ -3,10 +3,11 @@ import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
-const rootDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const frontendDirectory = dirname(fileURLToPath(import.meta.url));
+const repositoryDirectory = resolve(frontendDirectory, "..");
 
 export default defineConfig(({ command }) => {
-  const environment = loadEnv(command === "serve" ? "development" : "production", rootDirectory, "");
+  const environment = loadEnv(command === "serve" ? "development" : "production", repositoryDirectory, "");
   const protectionToken = environment.ARTSHIELD_PROTECTION_TOKEN;
   const registryToken = environment.ARTSHIELD_REGISTRY_TOKEN;
   const ownershipToken = environment.ARTSHIELD_OWNERSHIP_TOKEN;
@@ -16,7 +17,7 @@ export default defineConfig(({ command }) => {
   const proxyEntry = (token?: string) => ({ target, changeOrigin: true, headers: headersFor(token) });
 
   return {
-    envDir: rootDirectory,
+    envDir: frontendDirectory,
     plugins: [react()],
     resolve: {
       alias: {

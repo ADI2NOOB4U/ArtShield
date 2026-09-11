@@ -12,6 +12,7 @@ import { VerificationSection, VerificationResultData } from "../components/prote
 import { useAudioEngine } from "../hooks/useAudioEngine";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import { usePointerParallax } from "../hooks/usePointerParallax";
+import { apiBaseUrl, apiUrl } from "../services/api";
 
 /*
  * Existing exhibition protect/verify tool, enhanced into a cinematic cyber-security experience.
@@ -19,9 +20,7 @@ import { usePointerParallax } from "../hooks/usePointerParallax";
  * persistence and download behaviour are intentionally identical to the original.
  */
 
-const configuredApiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
-const apiUrl = configuredApiUrl.replace(/\/api\/?$/, "").replace(/\/+$/, "");
-const usesLocalDemoProxy = import.meta.env.DEV && apiUrl === "";
+const usesLocalDemoProxy = import.meta.env.DEV && apiBaseUrl === "";
 
 type ProtectionResult = {
 	fingerprint: string;
@@ -97,10 +96,10 @@ async function sha256Hex(file: File): Promise<string> {
 
 async function requestApi<T>(path: string, options: RequestInit = {}): Promise<T> {
 	try {
-		return await readApiResponse<T>(await fetch(`${apiUrl}${path}`, options));
+		return await readApiResponse<T>(await fetch(apiUrl(path), options));
 	} catch (requestError) {
 		if (requestError instanceof TypeError) {
-			throw new Error(`Unable to reach ArtShield backend at ${apiUrl}: ${requestError.message}`);
+			throw new Error(`Unable to reach ArtShield backend at ${apiBaseUrl || "the current origin"}: ${requestError.message}`);
 		}
 		throw requestError;
 	}
@@ -895,7 +894,7 @@ export default function Protect() {
 					certificate={certificate}
 					provenance={provenanceRecord}
 					events={securityEvents}
-					apiBase={apiUrl}
+					apiBase={apiBaseUrl}
 				/>
 
 				{/* Two-Column Verification Suite */}
