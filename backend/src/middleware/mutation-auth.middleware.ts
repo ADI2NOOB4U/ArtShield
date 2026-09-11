@@ -4,6 +4,13 @@ import { securityLog } from "./observability.middleware.js";
 
 const TOKEN_HEADER = "authorization";
 const ROLE_HEADER = "x-artshield-role";
+type MutationScope = "protection" | "registry" | "ownership";
+
+const SCOPE_ENVIRONMENT: Record<MutationScope, string> = {
+	protection: "ARTSHIELD_PROTECTION_TOKEN",
+	registry: "ARTSHIELD_REGISTRY_TOKEN",
+	ownership: "ARTSHIELD_OWNERSHIP_TOKEN",
+};
 
 function safeEqual(left: string, right: string): boolean {
 	const leftBytes = Buffer.from(left);
@@ -11,8 +18,9 @@ function safeEqual(left: string, right: string): boolean {
 	return leftBytes.length === rightBytes.length && timingSafeEqual(leftBytes, rightBytes);
 }
 
-export function requireMutationAuth(request: Request, response: Response, next: NextFunction): void {
-	const configuredToken = process.env.ARTSHIELD_MUTATION_TOKEN;
+export function requireMutationAuth(scope: MutationScope) {
+	return (request: Request, response: Response, next: NextFunction): void => {
+	const configuredToken = process.env[SCOPE_ENVIRONMENT[scope]];
 	const configuredRole = process.env.ARTSHIELD_MUTATION_ROLE ?? "operator";
 	const authorization = request.header(TOKEN_HEADER);
 	const role = request.header(ROLE_HEADER);
@@ -29,4 +37,5 @@ export function requireMutationAuth(request: Request, response: Response, next: 
 		return;
 	}
 	next();
+	};
 }

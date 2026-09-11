@@ -35,11 +35,12 @@ describe("Phase 2 local blockchain integration", () => {
       "function ownerOf(uint256) view returns (address)",
       "function rightsForArtwork(bytes32) view returns (uint256[])",
     ], provider);
-    const headers = {
+    const registryHeaders = {
       "content-type": "application/json",
-      authorization: `Bearer ${process.env.ARTSHIELD_MUTATION_TOKEN}`,
+      authorization: `Bearer ${process.env.ARTSHIELD_REGISTRY_TOKEN}`,
       "x-artshield-role": process.env.ARTSHIELD_MUTATION_ROLE ?? "operator",
     };
+    const ownershipHeaders = { ...registryHeaders, authorization: `Bearer ${process.env.ARTSHIELD_OWNERSHIP_TOKEN}` };
     const certificates: Array<{ fingerprint: string; metadata: Record<string, string>; metadataUri: string; body: any }> = [];
     for (const label of ["A", "B", "C", "D", "E"]) {
       const fingerprint = ethers.keccak256(ethers.toUtf8Bytes(`e2e-${label}-${Date.now()}`)).slice(2);
@@ -47,7 +48,7 @@ describe("Phase 2 local blockchain integration", () => {
       const metadataUri = `local://e2e-${label}`;
       const certificateResponse = await fetch(`${address}/api/certificates`, {
         method: "POST",
-        headers,
+        headers: registryHeaders,
         body: JSON.stringify({ recipient: signer.address, artworkFingerprint: fingerprint, metadata, metadataUri }),
       });
       assert.equal(certificateResponse.status, 201);
@@ -81,7 +82,7 @@ describe("Phase 2 local blockchain integration", () => {
     assert.equal(new Set(certificates.map((entry) => entry.body.tokenId)).size, 5);
     const duplicate = await fetch(`${address}/api/certificates`, {
       method: "POST",
-      headers,
+      headers: registryHeaders,
       body: JSON.stringify({ recipient: signer.address, artworkFingerprint: certificates[0].fingerprint, metadata: certificates[0].metadata, metadataUri: certificates[0].metadataUri }),
     });
     assert.equal(duplicate.status, 409);
@@ -90,7 +91,7 @@ describe("Phase 2 local blockchain integration", () => {
 
     const registrationResponse = await fetch(`${address}/api/artworks/register`, {
       method: "POST",
-      headers,
+      headers: registryHeaders,
       body: JSON.stringify({
         artworkFingerprint: fingerprint,
         metadataHash: certificate.metadataHash,
@@ -103,14 +104,14 @@ describe("Phase 2 local blockchain integration", () => {
     for (const entry of certificates.slice(1, 3)) {
       const independentRegistration = await fetch(`${address}/api/artworks/register`, {
         method: "POST",
-        headers,
+        headers: registryHeaders,
         body: JSON.stringify({ artworkFingerprint: entry.fingerprint, metadataHash: entry.body.metadataHash, certificateTokenId: entry.body.tokenId, creator: signer.address }),
       });
       assert.equal(independentRegistration.status, 201);
     }
     const duplicateRegistration = await fetch(`${address}/api/artworks/register`, {
       method: "POST",
-      headers,
+      headers: registryHeaders,
       body: JSON.stringify({ artworkFingerprint: fingerprint, metadataHash: certificate.metadataHash, certificateTokenId: certificate.tokenId, creator: signer.address }),
     });
     assert.equal(duplicateRegistration.status, 409);
@@ -130,11 +131,11 @@ describe("Phase 2 local blockchain integration", () => {
 
     const unauthorizedRights = await fetch(`${address}/api/rights`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ artworkFingerprint: fingerprint, grantee: signer.address, rightsMask: 4, metadataUri: "local://unauthorized" }) });
     assert.equal(unauthorizedRights.status, 401);
-    const wrongRoleRights = await fetch(`${address}/api/rights`, { method: "POST", headers: { ...headers, "x-artshield-role": "viewer" }, body: JSON.stringify({ artworkFingerprint: fingerprint, grantee: signer.address, rightsMask: 4, metadataUri: "local://wrong-role" }) });
+    const wrongRoleRights = await fetch(`${address}/api/rights`, { method: "POST", headers: { ...ownershipHeaders, "x-artshield-role": "viewer" }, body: JSON.stringify({ artworkFingerprint: fingerprint, grantee: signer.address, rightsMask: 4, metadataUri: "local://wrong-role" }) });
     assert.equal(wrongRoleRights.status, 403);
     const rightsResponse = await fetch(`${address}/api/rights`, {
       method: "POST",
-      headers,
+      headers: ownershipHeaders,
       body: JSON.stringify({ artworkFingerprint: fingerprint, grantee: signer.address, rightsMask: 4, metadataUri: "local://e2e-rights" }),
     });
     assert.equal(rightsResponse.status, 201);
@@ -152,14 +153,14 @@ describe("Phase 2 local blockchain integration", () => {
     assert.equal(directRights[6], "local://e2e-rights");
     assert.equal(await rightsContract.ownerOf(rights.tokenId), signer.address);
     assert.deepEqual((await rightsContract.rightsForArtwork(`0x${fingerprint}`)).map((value: bigint) => value.toString()), [rights.tokenId]);
-    const secondRightsResponse = await fetch(`${address}/api/rights`, { method: "POST", headers, body: JSON.stringify({ artworkFingerprint: fingerprint, grantee: signer.address, rightsMask: 1, metadataUri: "local://e2e-viewing" }) });
+    const secondRightsResponse = await fetch(`${address}/api/rights`, { method: "POST", headers: ownershipHeaders, body: JSON.stringify({ artworkFingerprint: fingerprint, grantee: signer.address, rightsMask: 1, metadataUri: "local://e2e-viewing" }) });
     assert.equal(secondRightsResponse.status, 201);
     const secondRights = await secondRightsResponse.json();
     assert.notEqual(secondRights.tokenId, rights.tokenId);
-    const independentRightsResponse = await fetch(`${address}/api/rights`, { method: "POST", headers, body: JSON.stringify({ artworkFingerprint: certificates[1].fingerprint, grantee: signer.address, rightsMask: 4, metadataUri: "local://e2e-independent" }) });
+    const independentRightsResponse = await fetch(`${address}/api/rights`, { method: "POST", headers: ownershipHeaders, body: JSON.stringify({ artworkFingerprint: certificates[1].fingerprint, grantee: signer.address, rightsMask: 4, metadataUri: "local://e2e-independent" }) });
     assert.equal(independentRightsResponse.status, 201);
     const independentRights = await independentRightsResponse.json();
-    const conflictRights = await fetch(`${address}/api/rights`, { method: "POST", headers, body: JSON.stringify({ artworkFingerprint: fingerprint, grantee: signer.address, rightsMask: 4, metadataUri: "local://e2e-conflict" }) });
+    const conflictRights = await fetch(`${address}/api/rights`, { method: "POST", headers: ownershipHeaders, body: JSON.stringify({ artworkFingerprint: fingerprint, grantee: signer.address, rightsMask: 4, metadataUri: "local://e2e-conflict" }) });
     assert.equal(conflictRights.status, 409);
     const rightsVerification = await fetch(`${address}/api/rights/${rights.tokenId}/verify?rightsMask=4`);
     assert.deepEqual(await rightsVerification.json(), { valid: true });
@@ -168,14 +169,14 @@ describe("Phase 2 local blockchain integration", () => {
     const independentRightsVerification = await fetch(`${address}/api/rights/${independentRights.tokenId}/verify?rightsMask=4`);
     assert.deepEqual(await independentRightsVerification.json(), { valid: true });
     const latest = await provider.getBlock("latest");
-    const expiringResponse = await fetch(`${address}/api/rights`, { method: "POST", headers, body: JSON.stringify({ artworkFingerprint: fingerprint, grantee: signer.address, rightsMask: 8, expiresAt: Number(latest!.timestamp) + 30, metadataUri: "local://e2e-expiring" }) });
+    const expiringResponse = await fetch(`${address}/api/rights`, { method: "POST", headers: ownershipHeaders, body: JSON.stringify({ artworkFingerprint: fingerprint, grantee: signer.address, rightsMask: 8, expiresAt: Number(latest!.timestamp) + 30, metadataUri: "local://e2e-expiring" }) });
     assert.equal(expiringResponse.status, 201);
     const expiringRights = await expiringResponse.json();
     assert.deepEqual(await (await fetch(`${address}/api/rights/${expiringRights.tokenId}/verify?rightsMask=8`)).json(), { valid: true });
     await provider.send("evm_increaseTime", [31]);
     await provider.send("evm_mine", []);
     assert.deepEqual(await (await fetch(`${address}/api/rights/${expiringRights.tokenId}/verify?rightsMask=8`)).json(), { valid: false });
-    const revocation = await fetch(`${address}/api/rights/${rights.tokenId}/revoke`, { method: "POST", headers });
+    const revocation = await fetch(`${address}/api/rights/${rights.tokenId}/revoke`, { method: "POST", headers: ownershipHeaders });
     assert.equal(revocation.status, 200);
     assert.match(rights.transactionHash, /^0x[0-9a-f]{64}$/i);
     assert.match((await revocation.json()).transactionHash, /^0x[0-9a-f]{64}$/i);
@@ -187,7 +188,7 @@ describe("Phase 2 local blockchain integration", () => {
     const newOwner = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
     const transfer = await fetch(`${address}/api/artworks/transfer`, {
       method: "POST",
-      headers,
+      headers: ownershipHeaders,
       body: JSON.stringify({ artworkFingerprint: fingerprint, newOwner }),
     });
     assert.equal(transfer.status, 200);

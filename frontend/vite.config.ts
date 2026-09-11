@@ -7,8 +7,13 @@ const rootDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 export default defineConfig(({ command }) => {
   const environment = loadEnv(command === "serve" ? "development" : "production", rootDirectory, "");
-  const mutationToken = environment.ARTSHIELD_MUTATION_TOKEN;
+  const protectionToken = environment.ARTSHIELD_PROTECTION_TOKEN;
+  const registryToken = environment.ARTSHIELD_REGISTRY_TOKEN;
+  const ownershipToken = environment.ARTSHIELD_OWNERSHIP_TOKEN;
   const mutationRole = environment.ARTSHIELD_MUTATION_ROLE ?? "operator";
+  const target = process.env.LOCAL_BACKEND_URL ?? environment.LOCAL_BACKEND_URL ?? "http://localhost:3000";
+  const headersFor = (token?: string) => token ? { authorization: `Bearer ${token}`, "x-artshield-role": mutationRole } : undefined;
+  const proxyEntry = (token?: string) => ({ target, changeOrigin: true, headers: headersFor(token) });
 
   return {
     envDir: rootDirectory,
@@ -24,18 +29,16 @@ export default defineConfig(({ command }) => {
       strictPort: true,
       // This development-only proxy keeps the local demo credential on the Vite
       // server. It is not a VITE_ variable and is never bundled for the browser.
-      proxy: mutationToken
-        ? {
-            "/api": {
-              target: process.env.LOCAL_BACKEND_URL ?? environment.LOCAL_BACKEND_URL ?? "http://localhost:3000",
-              changeOrigin: true,
-              headers: {
-                authorization: `Bearer ${mutationToken}`,
-                "x-artshield-role": mutationRole,
-              },
-            },
-          }
-        : undefined,
+      proxy: {
+        "/api/protection": proxyEntry(protectionToken),
+        "/api/verification": proxyEntry(protectionToken),
+        "/api/security": proxyEntry(protectionToken),
+        "/api/certificates": proxyEntry(registryToken),
+        "/api/artworks/register": proxyEntry(registryToken),
+        "/api/artworks/transfer": proxyEntry(ownershipToken),
+        "/api/rights": proxyEntry(ownershipToken),
+        "/api": proxyEntry(),
+      },
     },
   };
 });

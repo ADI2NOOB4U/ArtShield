@@ -9,7 +9,9 @@ $environmentNames = @(
     "OWNERSHIP_CONTRACT_ADDRESS",
     "RIGHTS_CONTRACT_ADDRESS",
     "CERTIFICATE_SIGNER_PRIVATE_KEY",
-    "ARTSHIELD_MUTATION_TOKEN",
+    "ARTSHIELD_PROTECTION_TOKEN",
+    "ARTSHIELD_REGISTRY_TOKEN",
+    "ARTSHIELD_OWNERSHIP_TOKEN",
     "ARTSHIELD_MUTATION_ROLE"
 )
 $previousEnvironment = @{}
@@ -40,7 +42,9 @@ try {
     $env:OWNERSHIP_CONTRACT_ADDRESS = $deployment.ownership
     $env:RIGHTS_CONTRACT_ADDRESS = $deployment.rights
     $env:CERTIFICATE_SIGNER_PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
-    $env:ARTSHIELD_MUTATION_TOKEN = "local-e2e-token"
+    $env:ARTSHIELD_PROTECTION_TOKEN = "local-e2e-protection-token"
+    $env:ARTSHIELD_REGISTRY_TOKEN = "local-e2e-registry-token"
+    $env:ARTSHIELD_OWNERSHIP_TOKEN = "local-e2e-ownership-token"
     $env:ARTSHIELD_MUTATION_ROLE = "operator"
 
     Push-Location "$root\backend"
