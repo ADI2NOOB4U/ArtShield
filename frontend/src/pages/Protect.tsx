@@ -9,7 +9,9 @@ import { ArtifactEvent, ArtifactIntelligence, ProvenanceRecord } from "../compon
 import { ProtectionPipeline } from "../components/protect/ProtectionPipeline";
 import { ProtectionResult as CinematicProtectionResult } from "../components/protect/ProtectionResult";
 import { VerificationSection, VerificationResultData } from "../components/protect/VerificationSection";
+import LoginModal from "../components/auth/LoginModal";
 import { useAudioEngine } from "../hooks/useAudioEngine";
+import { useAuth } from "../hooks/useAuth";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import { usePointerParallax } from "../hooks/usePointerParallax";
 import { apiBaseUrl, apiRequestDefaults, apiUrl } from "../services/api";
@@ -104,6 +106,8 @@ async function requestApi<T>(path: string, options: RequestInit = {}): Promise<T
 }
 
 export default function Protect() {
+	const { authReady, isAuthenticated } = useAuth();
+	const [loginModalOpen, setLoginModalOpen] = useState(false);
 	const [file, setFile] = useState<File | null>(null);
 	const [watermark, setWatermark] = useState("ArtShield");
 	const [title, setTitle] = useState("");
@@ -141,6 +145,18 @@ export default function Protect() {
 	const [pipelinePhase, setPipelinePhase] = useState<number>(0);
 	const [tamperResistant, setTamperResistant] = useState<boolean>(true);
 	const [isDropActive, setIsDropActive] = useState(false);
+
+	function requireAuthentication(): boolean {
+		if (!authReady) {
+			setError("Authentication is still loading. Please try again.");
+			return false;
+		}
+		if (!isAuthenticated) {
+			setLoginModalOpen(true);
+			return false;
+		}
+		return true;
+	}
 
 	const uploadCardRef = useRef<HTMLDivElement | null>(null);
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -280,6 +296,7 @@ export default function Protect() {
 			setError("No verification reference available. Protect this artwork first or load its saved reference.");
 			return;
 		}
+		if (!requireAuthentication()) return;
 		setVerificationBusy(true);
 		setError("");
 		audio.play("scan");
@@ -312,6 +329,7 @@ export default function Protect() {
 			setError("Choose a PNG, JPEG, or WebP image first.");
 			return;
 		}
+		if (!requireAuthentication()) return;
 		setBusy(true);
 		setError("");
 		try {
@@ -352,6 +370,9 @@ export default function Protect() {
 	}
 
 	async function phase2Request<T>(path: string, options: RequestInit = {}): Promise<T> {
+		if (options.method?.toUpperCase() === "POST" && !requireAuthentication()) {
+			throw new Error("Authentication required");
+		}
 		return requestApi<T>(path, {
 			...options,
 			headers: {
@@ -528,6 +549,7 @@ export default function Protect() {
 	}, [verification, verificationReferences, selectedArtifactHash]);
 
 	return (
+		<>
 		<div className="pc-page">
 			{/* Fixed Atmospheric Cinematic Background */}
 			<CinematicBackground reducedMotion={reducedMotion} />
@@ -1107,5 +1129,7 @@ export default function Protect() {
 				</section>
 			</main>
 		</div>
+		<LoginModal isOpen={loginModalOpen} onClose={() => setLoginModalOpen(false)} />
+		</>
 	);
 }
