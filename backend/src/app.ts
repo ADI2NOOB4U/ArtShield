@@ -8,7 +8,9 @@ import { fileURLToPath } from "node:url";
 
 import blockchainRoutes from "./routes/blockchain.routes.js";
 import phase2Routes from "./routes/phase2.routes.js";
+import authRoutes from "./routes/auth.routes.js";
 import { requireMutationAuth } from "./middleware/mutation-auth.middleware.js";
+import { allowBrowserMutationAuth, requireBrowserMutationOrigin } from "./middleware/session-auth.middleware.js";
 
 dotenv.config({ path: resolve(dirname(fileURLToPath(import.meta.url)), "../../.env"), quiet: true });
 
@@ -139,6 +141,7 @@ const corsOptions = {
 	},
 	methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 	allowedHeaders: ["Content-Type", "Authorization", "X-ArtShield-Role"],
+	credentials: true,
 	optionsSuccessStatus: 204,
 };
 app.disable("x-powered-by");
@@ -154,6 +157,8 @@ app.options(/.*/, cors(corsOptions));
 app.use(express.json({ limit: JSON_BODY_LIMIT }));
 const expensiveLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 40, standardHeaders: "draft-8", legacyHeaders: false, message: { error: "too many expensive requests; please retry shortly" } });
 const mutationLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 80, standardHeaders: "draft-8", legacyHeaders: false, skip: (request) => ["GET", "HEAD", "OPTIONS"].includes(request.method), message: { error: "too many mutation requests; please retry shortly" } });
+const authenticationLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: "draft-8", legacyHeaders: false, message: { error: "too many authentication attempts; please retry shortly" } });
+app.use("/api/auth", authenticationLimiter, authRoutes);
 app.use("/api", mutationLimiter);
 app.use("/api", blockchainRoutes);
 app.use("/api", phase2Routes);
@@ -169,14 +174,14 @@ app.get("/api/system-status", async (_request, response) => {
 	const blockchain = rpcUrl ? await reachable(rpcUrl, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_chainId", params: [] }) }) : false;
 	response.json({ backend: true, ml, blockchain });
 });
-app.post("/api/protection", requireMutationAuth("protection"), expensiveLimiter, async (request, response, next) => {
+app.post("/api/protection", requireBrowserMutationOrigin, allowBrowserMutationAuth("protection"), requireMutationAuth("protection"), expensiveLimiter, async (request, response, next) => {
 	try {
 		response.json(await callMl("/v1/protect", request.body as ProtectionBody));
 	} catch (error) {
 		next(error);
 	}
 });
-app.post("/api/verification", requireMutationAuth("protection"), expensiveLimiter, async (request, response, next) => {
+app.post("/api/verification", requireBrowserMutationOrigin, allowBrowserMutationAuth("protection"), requireMutationAuth("protection"), expensiveLimiter, async (request, response, next) => {
 	try {
 		response.json(await callMl("/v1/verify", request.body as VerificationBody));
 	} catch (error) {
@@ -184,7 +189,7 @@ app.post("/api/verification", requireMutationAuth("protection"), expensiveLimite
 	}
 });
 for (const [route, mlPath] of [["/api/security/model-inversion", "/v1/security/model-inversion"], ["/api/security/prompt-check", "/v1/security/prompt-check"], ["/api/security/file-check", "/v1/security/file-check"]] as const) {
-	app.post(route, requireMutationAuth("protection"), expensiveLimiter, async (request, response, next) => {
+	app.post(route, requireBrowserMutationOrigin, allowBrowserMutationAuth("protection"), requireMutationAuth("protection"), expensiveLimiter, async (request, response, next) => {
 		try {
 			response.json(await callSecurity(mlPath, request.body));
 		} catch (error) {

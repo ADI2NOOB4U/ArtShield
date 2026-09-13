@@ -12,15 +12,13 @@ import { VerificationSection, VerificationResultData } from "../components/prote
 import { useAudioEngine } from "../hooks/useAudioEngine";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import { usePointerParallax } from "../hooks/usePointerParallax";
-import { apiBaseUrl, apiUrl } from "../services/api";
+import { apiBaseUrl, apiRequestDefaults, apiUrl } from "../services/api";
 
 /*
  * Existing exhibition protect/verify tool, enhanced into a cinematic cyber-security experience.
  * API paths, request bodies, auth headers, SHA-256 verification, verification-reference
  * persistence and download behaviour are intentionally identical to the original.
  */
-
-const usesLocalDemoProxy = import.meta.env.DEV && apiBaseUrl === "";
 
 type ProtectionResult = {
 	fingerprint: string;
@@ -96,7 +94,7 @@ async function sha256Hex(file: File): Promise<string> {
 
 async function requestApi<T>(path: string, options: RequestInit = {}): Promise<T> {
 	try {
-		return await readApiResponse<T>(await fetch(apiUrl(path), options));
+		return await readApiResponse<T>(await fetch(apiUrl(path), { ...apiRequestDefaults, ...options }));
 	} catch (requestError) {
 		if (requestError instanceof TypeError) {
 			throw new Error(`Unable to reach ArtShield backend at ${apiBaseUrl || "the current origin"}: ${requestError.message}`);
@@ -131,7 +129,6 @@ export default function Protect() {
 	const [certificate, setCertificate] = useState<CertificateResult | null>(null);
 	const [certificateBusy, setCertificateBusy] = useState(false);
 	const [downloadMessage, setDownloadMessage] = useState("");
-	const [mutationToken, setMutationToken] = useState("");
 	const [newOwner, setNewOwner] = useState("");
 	const [provenanceRecord, setProvenanceRecord] = useState<ProvenanceRecord | null>(null);
 	const [securityEvents, setSecurityEvents] = useState<ArtifactEvent[]>([]);
@@ -359,7 +356,6 @@ export default function Protect() {
 			...options,
 			headers: {
 				...(options.body ? { "content-type": "application/json" } : {}),
-				...(mutationToken ? { authorization: `Bearer ${mutationToken}`, "x-artshield-role": "operator" } : {}),
 				...(options.headers ?? {}),
 			},
 		});
@@ -933,23 +929,6 @@ export default function Protect() {
 								{/* Left Sub-card: Provenance & Certificates */}
 								<div className="pc-sub-card">
 									<h4 className="pc-sub-card__title">Provenance & Certificates</h4>
-
-									{usesLocalDemoProxy ? (
-										<p className="pc-form-label" role="status">
-											LOCAL DEMO CREDENTIAL ACTIVE — supplied securely by the development server and never exposed to this browser.
-										</p>
-									) : (
-										<div className="pc-form-group">
-											<label className="pc-form-label">DEMO MUTATION TOKEN</label>
-											<input
-												type="password"
-												className="pc-input"
-												value={mutationToken}
-												onChange={(event) => setMutationToken(event.target.value)}
-												placeholder="Local backend operator credential"
-											/>
-										</div>
-									)}
 
 									<div className="pc-form-group">
 										<label className="pc-form-label">CREATOR WALLET</label>

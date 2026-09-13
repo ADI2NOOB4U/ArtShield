@@ -28,8 +28,8 @@ export const DEMO_PROFILES: Record<"creator" | "studio", User> = {
 export interface AuthContextType {
 	user: User | null;
 	isAuthenticated: boolean;
-	login: (user: User) => void;
-	loginDemo: (role: "creator" | "studio") => void;
-	logout: () => void;
+	authReady: boolean;
+	login: (username: string, password: string) => Promise<void>;
+	logout: () => Promise<void>;
 }
 

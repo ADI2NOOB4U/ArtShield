@@ -1,42 +1,34 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { User, DEMO_PROFILES } from "../types/auth";
+import { apiRequestDefaults, apiUrl } from "../services/api";
+import { User } from "../types/auth";
 import { AuthContext } from "./authContextDef";
 
-const STORAGE_KEY = "artshield.auth.session";
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-	const [user, setUser] = useState<User | null>(() => {
-		if (typeof window === "undefined") return null;
-		try {
-			const saved = localStorage.getItem(STORAGE_KEY);
-			return saved ? (JSON.parse(saved) as User) : null;
-		} catch {
-			return null;
-		}
-	});
+	const [user, setUser] = useState<User | null>(null);
+	const [authReady, setAuthReady] = useState(false);
 
 	useEffect(() => {
-		if (typeof window === "undefined") return;
-		try {
-			if (user) {
-				localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-			} else {
-				localStorage.removeItem(STORAGE_KEY);
-			}
-		} catch {
-			// Ignore local storage errors
-		}
-	}, [user]);
+		fetch(apiUrl("/api/auth/session"), apiRequestDefaults)
+			.then(async (response) => (response.ok ? (response.json() as Promise<{ user: User }>) : null))
+			.then((session) => setUser(session?.user ?? null))
+			.catch(() => setUser(null))
+			.finally(() => setAuthReady(true));
+	}, []);
 
-	const login = (newUser: User) => {
-		setUser(newUser);
+	const login = async (username: string, password: string) => {
+		const response = await fetch(apiUrl("/api/auth/login"), {
+			...apiRequestDefaults,
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({ username, password }),
+		});
+		const body = (await response.json().catch(() => null)) as { user?: User; error?: string } | null;
+		if (!response.ok || !body?.user) throw new Error(body?.error ?? "Authentication failed");
+		setUser(body.user);
 	};
 
-	const loginDemo = (role: "creator" | "studio") => {
-		setUser(DEMO_PROFILES[role]);
-	};
-
-	const logout = () => {
+	const logout = async () => {
+		await fetch(apiUrl("/api/auth/logout"), { ...apiRequestDefaults, method: "POST" }).catch(() => undefined);
 		setUser(null);
 	};
 
@@ -45,8 +37,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 			value={{
 				user,
 				isAuthenticated: Boolean(user),
+				authReady,
 				login,
-				loginDemo,
 				logout,
 			}}
 		>

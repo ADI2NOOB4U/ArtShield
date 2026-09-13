@@ -8,10 +8,12 @@ interface LoginModalProps {
 }
 
 export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
-	const { login, loginDemo } = useAuth();
+	const { login } = useAuth();
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
+	const [password, setPassword] = useState("");
 	const [role, setRole] = useState<"creator" | "studio">("creator");
+	const [error, setError] = useState("");
 
 	useEffect(() => {
 		if (!isOpen) return;
@@ -24,22 +26,23 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
 	if (!isOpen) return null;
 
-	const handleCustomSubmit = (e: FormEvent) => {
+	const handleCustomSubmit = async (e: FormEvent) => {
 		e.preventDefault();
-		if (!email.trim()) return;
-		login({
-			name: name.trim() || email.split("@")[0] || "ArtShield Member",
-			email: email.trim(),
-			role,
-			roleTitle: role === "creator" ? "Digital Creator" : "Studio Member",
-			walletAddress: `0x${Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join("")}`,
-		});
-		onClose();
+		setError("");
+		try {
+			await login(email.trim(), password);
+			onClose();
+		} catch (loginError) {
+			setError(loginError instanceof Error ? loginError.message : "Authentication failed");
+		}
 	};
 
 	const handleDemoSelect = (preset: "creator" | "studio") => {
-		loginDemo(preset);
-		onClose();
+		const profile = DEMO_PROFILES[preset];
+		setName(profile.name);
+		setEmail(profile.email);
+		setRole(preset);
+		setError("");
 	};
 
 	return (
@@ -161,6 +164,21 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
 					</div>
 
 					<div className="flex flex-col gap-1">
+						<label className="font-mono text-[10px] uppercase tracking-wider text-silver-400" htmlFor="login-password">
+							SESSION PASSWORD
+						</label>
+						<input
+							id="login-password"
+							type="password"
+							required
+							value={password}
+							onChange={(e) => setPassword(e.target.value)}
+							placeholder="Server-issued exhibition credential"
+							className="rounded-lg border border-white/10 bg-black/40 px-3.5 py-2 font-sans text-xs text-silver-100 placeholder:text-silver-600 focus:border-ice-400 focus:outline-none focus:ring-1 focus:ring-ice-400"
+						/>
+					</div>
+
+					<div className="flex flex-col gap-1">
 						<label className="font-mono text-[10px] uppercase tracking-wider text-silver-400">
 							ACCOUNT SCOPE
 						</label>
@@ -201,7 +219,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
 					</button>
 
 					<p className="text-center font-mono text-[10px] text-silver-500">
-						Exhibition prototype session · Local cryptographically sealed session
+						{error || "Server-validated exhibition session"}
 					</p>
 				</form>
 			</div>

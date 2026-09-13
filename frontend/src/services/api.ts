@@ -5,3 +5,5 @@ export const apiBaseUrl = configuredApiUrl.replace(/\/api\/?$/, "").replace(/\/+
 export function apiUrl(path: string): string {
 	return `${apiBaseUrl}/${path.replace(/^\/+/, "")}`;
 }
+
+export const apiRequestDefaults: RequestInit = { credentials: "include" };
