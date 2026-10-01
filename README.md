@@ -1,3 +1,83 @@
+## 🟣 ArtShield Beta — Live
+
+<p align="center">
+  <a href="https://art-shield-alpha.vercel.app">
+    <img
+      src="https://img.shields.io/badge/ARTSHIELD-BETA%20%E2%80%94%20LIVE-8B5CF6?style=for-the-badge&logo=vercel&logoColor=white"
+      alt="ArtShield Beta Live"
+    />
+  </a>
+</p>
+
+<p align="center">
+  <strong>Protect the art. Prove the original.</strong><br/>
+  <sub>Experience the ArtShield protection, verification and artifact passport pipeline.</sub>
+</p>
+
+<p align="center">
+  <a href="https://art-shield-alpha.vercel.app">
+    <strong>🚀 OPEN ARTSHIELD BETA →</strong>
+  </a>
+</p>
+
+<p align="center">
+  <code>https://art-shield-alpha.vercel.app</code>
+</p>
+
+---
+
+### ✦ What you can explore
+
+<table align="center">
+<tr>
+<td align="center" width="33%">
+
+### 🛡️ Protect
+
+Upload an artwork and run the protection pipeline.
+
+</td>
+
+<td align="center" width="33%">
+
+### 🔍 Verify
+
+Inspect the artifact fingerprint, watermark and integrity state.
+
+</td>
+
+<td align="center" width="33%">
+
+### 🪪 Artifact Passport
+
+View the portable cryptographic identity record.
+
+</td>
+</tr>
+</table>
+
+<p align="center">
+  <a href="https://art-shield-alpha.vercel.app/protect">
+    <img
+      src="https://img.shields.io/badge/TRY%20THE%20PROTECTION%20PIPELINE-7C3AED?style=for-the-badge&logo=shield&logoColor=white"
+      alt="Try Protection Pipeline"
+    />
+  </a>
+  &nbsp;
+  <a href="https://art-shield-alpha.vercel.app/verify">
+    <img
+      src="https://img.shields.io/badge/VERIFY%20AN%20ARTIFACT-9333EA?style=for-the-badge&logo=checkmarx&logoColor=white"
+      alt="Verify an Artifact"
+    />
+  </a>
+</p>
+
+> **🟣 BETA RELEASE**
+>
+> ArtShield is currently available as a **beta security pipeline** while advanced provenance, rights enforcement and on-chain anchoring continue to evolve.
+
+---
+
 <div align="center">
 
 # 🛡️ ARTSHIELD
@@ -38,6 +118,7 @@
 </div>
 
 ---
+
 
 ## ⚡ What is ArtShield?
 
@@ -759,27 +840,24 @@ The goal is to make complex technical operations **feel understandable and inspe
 
 ---
 
-# 📸 Interface Preview
+## 📸 Interface Preview
 
-If screenshots are included in the repository, they can be presented here:
+ArtShield's interface is designed as a focused **Beta security workspace**, covering artwork protection, verification, artifact intelligence, and provenance.
 
-```text
-docs/screenshots/
-├── landing.png
-├── protect.png
-├── passport.png
-└── verification.png
-```
+### Protection Workspace
 
-Example:
+The protection workflow allows an artwork to be processed through the ArtShield security pipeline, generating its cryptographic identity, watermark data, AI-shield metadata, and verification record.
 
-<p align="center">
-  <img src="docs/screenshots/landing.png" width="90%" alt="ArtShield landing interface">
-</p>
+### Artifact Passport
 
-> If these screenshot files are not present in your checkout, remove the corresponding image references from this section.
+Each protected artifact can be represented through an Artifact Passport containing its fingerprint, protection metadata, verification information, and current provenance state.
 
----
+### Verification Workspace
+
+The verification workflow allows a protected artifact to be inspected against its registered fingerprint and protection metadata to identify modification or integrity mismatches.
+
+> **Beta status:** ArtShield is currently in active beta development. Core protection, verification, artifact identity, and provenance workflows are being refined toward a production-ready release.
+
 
 # 🧪 Testing
 
