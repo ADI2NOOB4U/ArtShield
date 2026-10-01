@@ -108,6 +108,7 @@ async function requestApi<T>(path: string, options: RequestInit = {}): Promise<T
 export default function Protect() {
 	const { authReady, isAuthenticated } = useAuth();
 	const [loginModalOpen, setLoginModalOpen] = useState(false);
+	const pendingProtection = useRef(false);
 	const [file, setFile] = useState<File | null>(null);
 	const [watermark, setWatermark] = useState("ArtShield");
 	const [title, setTitle] = useState("");
@@ -323,13 +324,9 @@ export default function Protect() {
 		}
 	}
 
-	async function protect(event: FormEvent<HTMLFormElement>) {
-		event.preventDefault();
-		if (!file) {
-			setError("Choose a PNG, JPEG, or WebP image first.");
-			return;
-		}
-		if (!requireAuthentication()) return;
+	async function runProtection() {
+		const selectedFile = file;
+		if (!selectedFile) return;
 		setBusy(true);
 		setError("");
 		try {
@@ -337,7 +334,7 @@ export default function Protect() {
 				method: "POST",
 				headers: { "content-type": "application/json" },
 				body: JSON.stringify({
-					imageBase64: await fileAsBase64(file),
+					imageBase64: await fileAsBase64(selectedFile),
 					watermark,
 					metadata: { title, artist },
 				}),
@@ -366,6 +363,26 @@ export default function Protect() {
 			setPipelinePhase(0);
 		} finally {
 			setBusy(false);
+		}
+	}
+
+	async function protect(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault();
+		if (!file) {
+			setError("Choose a PNG, JPEG, or WebP image first.");
+			return;
+		}
+		if (!requireAuthentication()) {
+			pendingProtection.current = authReady && !isAuthenticated;
+			return;
+		}
+		await runProtection();
+	}
+
+	function handleLoginSuccess() {
+		if (pendingProtection.current) {
+			pendingProtection.current = false;
+			void runProtection();
 		}
 	}
 
@@ -1129,7 +1146,7 @@ export default function Protect() {
 				</section>
 			</main>
 		</div>
-		<LoginModal isOpen={loginModalOpen} onClose={() => setLoginModalOpen(false)} />
+		<LoginModal isOpen={loginModalOpen} onClose={() => setLoginModalOpen(false)} onSuccess={handleLoginSuccess} />
 		</>
 	);
 }

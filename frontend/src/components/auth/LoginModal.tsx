@@ -5,12 +5,13 @@ import { DEMO_PROFILES } from "../../types/auth";
 interface LoginModalProps {
 	isOpen: boolean;
 	onClose: () => void;
+	onSuccess?: () => void;
 }
 
-export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
+export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
 	const { login } = useAuth();
 	const [name, setName] = useState("");
-	const [email, setEmail] = useState("");
+	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
 	const [role, setRole] = useState<"creator" | "studio">("creator");
 	const [error, setError] = useState("");
@@ -30,7 +31,8 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
 		e.preventDefault();
 		setError("");
 		try {
-			await login(email.trim(), password);
+			await login(username.trim(), password);
+			onSuccess?.();
 			onClose();
 		} catch (loginError) {
 			setError(loginError instanceof Error ? loginError.message : "Authentication failed");
@@ -40,7 +42,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
 	const handleDemoSelect = (preset: "creator" | "studio") => {
 		const profile = DEMO_PROFILES[preset];
 		setName(profile.name);
-		setEmail(profile.email);
+		setUsername(profile.email);
 		setRole(preset);
 		setError("");
 	};
@@ -150,15 +152,16 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
 					<div className="flex flex-col gap-1">
 						<label className="font-mono text-[10px] uppercase tracking-wider text-silver-400" htmlFor="login-email">
-							CONTACT EMAIL
+							SERVER USERNAME / DEMO IDENTITY
 						</label>
 						<input
 							id="login-email"
-							type="email"
+							type="text"
+							autoComplete="username"
 							required
-							value={email}
-							onChange={(e) => setEmail(e.target.value)}
-							placeholder="artist@studio.com"
+							value={username}
+							onChange={(e) => setUsername(e.target.value)}
+							placeholder="Configured ArtShield username"
 							className="rounded-lg border border-white/10 bg-black/40 px-3.5 py-2 font-sans text-xs text-silver-100 placeholder:text-silver-600 focus:border-ice-400 focus:outline-none focus:ring-1 focus:ring-ice-400"
 						/>
 					</div>
@@ -170,6 +173,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
 						<input
 							id="login-password"
 							type="password"
+							autoComplete="current-password"
 							required
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}

@@ -4,6 +4,10 @@ import { Router } from "express";
 import { clearSessionCookie, createSessionCookie, readSession, requireAllowedBrowserOrigin, requireBrowserMutationOrigin, setSessionCookie } from "../middleware/session-auth.middleware.js";
 
 const router = Router();
+const DEMO_LOGIN_ALIASES = new Set([
+	"elena.rostova@artshield.io",
+	"curator@veritas.gallery",
+]);
 
 function safeEqual(left: string, right: string): boolean {
 	const leftBytes = Buffer.from(left);
@@ -31,7 +35,8 @@ router.post("/login", requireAllowedBrowserOrigin, (request, response) => {
 	}
 	const suppliedUsername = typeof request.body?.username === "string" ? request.body.username : "";
 	const suppliedPassword = typeof request.body?.password === "string" ? request.body.password : "";
-	if (!safeEqual(suppliedUsername, username) || !safeEqual(suppliedPassword, password)) {
+	const usernameMatches = safeEqual(suppliedUsername, username) || DEMO_LOGIN_ALIASES.has(suppliedUsername);
+	if (!usernameMatches || !safeEqual(suppliedPassword, password)) {
 		response.status(401).json({ error: "invalid credentials" });
 		return;
 	}

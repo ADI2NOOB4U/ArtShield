@@ -22,9 +22,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 			headers: { "content-type": "application/json" },
 			body: JSON.stringify({ username, password }),
 		});
-		const body = (await response.json().catch(() => null)) as { user?: User; error?: string } | null;
-		if (!response.ok || !body?.user) throw new Error(body?.error ?? "Authentication failed");
-		setUser(body.user);
+		const body = (await response.json().catch(() => null)) as { error?: string } | null;
+		if (!response.ok) throw new Error(body?.error ?? "Authentication failed");
+
+		const sessionResponse = await fetch(apiUrl("/api/auth/session"), apiRequestDefaults);
+		const session = (await sessionResponse.json().catch(() => null)) as { user?: User; error?: string } | null;
+		if (!sessionResponse.ok || !session?.user) {
+			throw new Error(session?.error ?? "Login succeeded, but the authenticated session could not be established");
+		}
+		setUser(session.user);
 	};
 
 	const logout = async () => {
