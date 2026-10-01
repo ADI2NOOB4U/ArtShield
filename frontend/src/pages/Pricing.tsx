@@ -8,19 +8,19 @@ import { CinematicBackground } from "../components/protect/CinematicBackground";
 const FAQ_ITEMS = [
 	{
 		q: "How does ArtShield differ from standard watermarking?",
-		a: "Standard watermarks can easily be cropped or removed by AI inpainting. ArtShield embeds high-dimensional latent watermarks directly into perceptual frequency bands alongside deterministic adversarial perturbations and generates an immutable SHA-256 seal.",
+		a: "The current protection workflow generates a SHA-256 fingerprint, embeds an LSB watermark, applies deterministic AI Shield frequency perturbation, and returns a SHA-256 digest for the protected file. These features are designed to support protection and integrity checks; they do not guarantee prevention of copying or AI training.",
 	},
 	{
 		q: "Do I need cryptocurrency or a Web3 wallet to use ArtShield?",
-		a: "No. The Explorer and Creator suites function completely through the standard browser application and our backend ML service. On-chain certificate registration and provenance logging can be automatically managed by the backend or linked to your custom wallet.",
+		a: "No wallet is required for the current beta protection flow. Public blockchain anchoring is in development, and availability of the ML service depends on deployment status.",
 	},
 	{
 		q: "Is image quality altered during the protection process?",
-		a: "ArtShield operates with zero perceptual loss. The mathematical perturbations and steganographic keys are embedded in imperceptible frequency domains that maintain high aesthetic fidelity while resisting scraping algorithms.",
+		a: "The pipeline returns a protected image with watermark and deterministic perturbation processing. Output appearance may vary by source artwork and should be reviewed before use.",
 	},
 	{
 		q: "Can I verify an artwork that was protected on another device?",
-		a: "Yes. Once an artwork's SHA-256 seal and fingerprint are registered or the verification reference is saved, any user can audit candidate artifacts through the ArtShield Verification Suite.",
+		a: "Verification currently uses a reference saved in the same browser. Cross-device verification requires the corresponding reference to be available and is not provided by the current local workflow.",
 	},
 ];
 
@@ -45,16 +45,16 @@ export default function Pricing() {
 					<div className="inline-flex items-center gap-2 rounded-full border border-ice-400/20 bg-ice-400/10 px-3.5 py-1 text-xs">
 						<span className="h-1.5 w-1.5 rounded-full bg-ice-400 shadow-[0_0_8px_#38bdf8]" />
 						<span className="font-mono text-[11px] uppercase tracking-widest text-ice-300">
-							TRANSPARENT CRYPTOGRAPHIC LICENSING
+							BETA ACCESS MODEL - CONCEPTUAL TIERS
 						</span>
 					</div>
 
 					<h1 className="mt-6 font-display text-4xl font-semibold tracking-tight text-silver-50 sm:text-5xl lg:text-6xl">
-						Predictable Security for Digital Creators
+						Early Access
 					</h1>
 
 					<p className="mt-6 text-base leading-relaxed text-silver-400 sm:text-lg">
-						Select the appropriate protection tier for your creative catalog, gallery collection, or institutional archive.
+						These access models are conceptual and do not represent finalized pricing or production service commitments.
 					</p>
 				</div>
 
@@ -71,7 +71,7 @@ export default function Pricing() {
 						>
 							{tier.highlighted && (
 								<div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-ice-400 to-blue-600 px-4 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-white shadow-md">
-									MOST POPULAR FOR ARTISTS
+									CONCEPTUAL MODEL
 								</div>
 							)}
 
@@ -146,7 +146,7 @@ export default function Pricing() {
 							SYSTEM SPECIFICATIONS
 						</span>
 						<h2 className="mt-2 font-display text-3xl font-semibold text-silver-50">
-							Capability Comparison
+							Planned Capability Overview
 						</h2>
 					</div>
 
@@ -168,34 +168,34 @@ export default function Pricing() {
 									<td className="p-4 sm:p-5 text-center text-ice-400">✓ Included</td>
 								</tr>
 								<tr>
-									<td className="p-4 sm:p-5 font-medium text-silver-100">Perceptual Watermark Embedding</td>
-									<td className="p-4 sm:p-5 text-center">Standard Spatial</td>
-									<td className="p-4 sm:p-5 text-center text-ice-300">Latent Space (Imperceptible)</td>
-									<td className="p-4 sm:p-5 text-center text-ice-300">Dual-Layer Latent + AI Shield</td>
+									<td className="p-4 sm:p-5 font-medium text-silver-100">LSB Steganographic Watermark</td>
+									<td className="p-4 sm:p-5 text-center">LSB watermark</td>
+									<td className="p-4 sm:p-5 text-center text-ice-300">LSB watermark</td>
+									<td className="p-4 sm:p-5 text-center text-ice-300">LSB watermark</td>
 								</tr>
 								<tr>
-									<td className="p-4 sm:p-5 font-medium text-silver-100">Deterministic AI Perturbation</td>
+									<td className="p-4 sm:p-5 font-medium text-silver-100">AI Shield - Deterministic frequency perturbation</td>
 									<td className="p-4 sm:p-5 text-center text-silver-600">—</td>
-									<td className="p-4 sm:p-5 text-center text-ice-400">✓ Full Frequency</td>
-									<td className="p-4 sm:p-5 text-center text-ice-400">✓ Multi-Scale Hardening</td>
+									<td className="p-4 sm:p-5 text-center text-ice-400">✓ Deterministic perturbation</td>
+									<td className="p-4 sm:p-5 text-center text-ice-400">✓ Deterministic perturbation</td>
 								</tr>
 								<tr>
-									<td className="p-4 sm:p-5 font-medium text-silver-100">Blockchain Authenticity Certificate</td>
+									<td className="p-4 sm:p-5 font-medium text-silver-100">Public Blockchain Anchoring</td>
 									<td className="p-4 sm:p-5 text-center text-silver-600">—</td>
-									<td className="p-4 sm:p-5 text-center text-ice-400">✓ On-Demand Token</td>
-									<td className="p-4 sm:p-5 text-center text-ice-400">✓ Batch Minting & Custom Contract</td>
+									<td className="p-4 sm:p-5 text-center text-ice-400">✓ In development</td>
+									<td className="p-4 sm:p-5 text-center text-ice-400">✓ In development</td>
 								</tr>
 								<tr>
-									<td className="p-4 sm:p-5 font-medium text-silver-100">Smart Contract Usage Rights & Licensing</td>
+									<td className="p-4 sm:p-5 font-medium text-silver-100">Production Rights Enforcement</td>
 									<td className="p-4 sm:p-5 text-center text-silver-600">—</td>
-									<td className="p-4 sm:p-5 text-center">Standard Rights</td>
-									<td className="p-4 sm:p-5 text-center text-ice-400">✓ Granular Rights Mask & Revocation</td>
+									<td className="p-4 sm:p-5 text-center">Declaration only</td>
+									<td className="p-4 sm:p-5 text-center text-ice-400">✓ In development</td>
 								</tr>
 								<tr>
-									<td className="p-4 sm:p-5 font-medium text-silver-100">Tamper Parity Verification Engine</td>
-									<td className="p-4 sm:p-5 text-center text-ice-400">✓ Browser Engine</td>
-									<td className="p-4 sm:p-5 text-center text-ice-400">✓ High-Precision ML Engine</td>
-									<td className="p-4 sm:p-5 text-center text-ice-400">✓ Automated Webhook/API Engine</td>
+									<td className="p-4 sm:p-5 font-medium text-silver-100">Deterministic Artifact Verification</td>
+									<td className="p-4 sm:p-5 text-center text-ice-400">✓ ML verification service</td>
+									<td className="p-4 sm:p-5 text-center text-ice-400">✓ ML verification service</td>
+									<td className="p-4 sm:p-5 text-center text-ice-400">✓ In development</td>
 								</tr>
 							</tbody>
 						</table>
@@ -251,17 +251,17 @@ export default function Pricing() {
 				{/* Final Call to Action */}
 				<div className="mt-24 rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.01] p-10 text-center backdrop-blur-2xl">
 					<h3 className="font-display text-2xl sm:text-3xl font-semibold text-silver-50">
-						Ready to protect your masterwork?
+						Explore the ArtShield beta
 					</h3>
 					<p className="mt-3 text-xs sm:text-sm text-silver-400 max-w-md mx-auto">
-						Generate cryptographic certificates, latent watermarks, and verification proofs in seconds.
+						Use the current protection and verification workflow. Commercial access terms are in development.
 					</p>
 					<div className="mt-8 flex justify-center gap-4">
 						<Link
 							to={ROUTES.protect}
 							className="rounded-full bg-gradient-to-r from-ice-400 to-blue-600 px-8 py-3 font-display text-xs font-semibold uppercase tracking-wider text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
 						>
-							Launch Protection Suite
+							Open Beta Workspace
 						</Link>
 					</div>
 				</div>

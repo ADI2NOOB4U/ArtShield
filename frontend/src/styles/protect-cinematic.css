@@ -963,6 +963,18 @@
 	gap: 2.75rem;
 	align-items: center;
 }
+.pc-result-layer-status { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; margin-top: 1rem; }
+.pc-result-layer-status__item { display: flex; flex-direction: column; gap: .3rem; min-width: 0; padding: .75rem; border: 1px solid var(--pc-border-faint); border-radius: var(--pc-radius-sm); background: rgba(0,0,0,.22); font-family: var(--pc-font-mono); font-size: .62rem; overflow-wrap: anywhere; }
+.pc-result-layer-status__item span:first-child { color: var(--pc-text-secondary); }
+.pc-result-layer-status__item--complete span:last-child { color: var(--pc-accent-success); }
+.pc-result-layer-status__item--pending span:last-child { color: var(--pc-text-muted); }
+.pc-result-layer-status__item--development { border-color: rgba(251,191,36,.22); }
+.pc-result-layer-status__item--development span:last-child { color: #fcd889; }
+.pc-artwork-comparison { grid-column: 1 / -1; width: 100%; max-width: 960px; margin: 1.5rem auto 0; padding: 1rem; border: 1px solid var(--pc-border-faint); border-radius: var(--pc-radius-lg); background: rgba(255,255,255,.02); }
+.pc-artwork-comparison__grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; margin-top: .8rem; }
+.pc-artwork-comparison figure { min-width: 0; margin: 0; }
+.pc-artwork-comparison img { display: block; width: 100%; height: 260px; object-fit: contain; border-radius: var(--pc-radius-sm); background: #05070a; }
+.pc-artwork-comparison figcaption { padding-top: .55rem; color: var(--pc-text-secondary); font-family: var(--pc-font-mono); font-size: .65rem; }
 
 /* 3D Hero Artwork Frame */
 .pc-hero-frame-wrapper {
@@ -1214,11 +1226,14 @@
 	font-family: var(--pc-font-mono);
 	font-size: 0.74rem;
 	color: var(--pc-text-primary);
-	word-break: break-all;
+	white-space: nowrap;
+	word-break: normal;
 }
 
 .pc-cert-panel__actions {
 	margin-top: 0.5rem;
+	display: grid;
+	gap: .7rem;
 }
 
 .pc-btn--download {
@@ -1544,12 +1559,6 @@
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-}
-
-.pc-verdict__confidence {
-	font-family: var(--pc-font-mono);
-	font-size: 0.75rem;
-	color: var(--pc-accent-cyan);
 }
 
 .pc-verdict__title-block {
@@ -1981,7 +1990,11 @@
 	letter-spacing: 0.08em;
 }
 .pc-sentinel__chip-label { color: var(--pc-text-secondary); }
-.pc-sentinel__chip-desc { color: var(--pc-text-dim); font-size: 0.68rem; line-height: 1.35; }
+.pc-sentinel__chip-desc { color: var(--pc-text-muted); font-size: 0.68rem; line-height: 1.35; overflow-wrap: anywhere; }
+.pc-sentinel__chip-state { color: var(--pc-text-muted); font-family: var(--pc-font-mono); font-size: 0.58rem; line-height: 1.35; }
+.pc-sentinel__chip--secured .pc-sentinel__chip-state { color: var(--pc-accent-success); }
+.pc-sentinel__chip--development { border-color: rgba(251, 191, 36, 0.22); }
+.pc-sentinel__chip--development .pc-sentinel__chip-state { color: #fcd889; }
 .pc-sentinel__status-bar {
 	display: flex;
 	align-items: center;
@@ -2010,6 +2023,9 @@
 .pc-meta-row__val { color: var(--pc-text-secondary); font-size: 0.78rem; overflow-wrap: anywhere; }
 .pc-meta-row__val--mono { font-family: var(--pc-font-mono); }
 .pc-meta-row__val--accent { color: var(--pc-accent-cyan); font-family: var(--pc-font-mono); font-size: 0.68rem; }
+.pc-passport-copy { align-self: flex-start; border: 1px solid var(--pc-border-faint); border-radius: 999px; background: rgba(255,255,255,.04); color: var(--pc-text-secondary); padding: .3rem .6rem; font-family: var(--pc-font-mono); font-size: .58rem; cursor: pointer; }
+.pc-passport-copy:hover, .pc-passport-copy:focus-visible { border-color: var(--pc-accent-cyan); color: var(--pc-text-primary); outline: 2px solid var(--pc-accent-cyan); outline-offset: 2px; }
+.pc-passport-explainer { margin: -.5rem 0 0; color: var(--pc-text-muted); font-size: .74rem; line-height: 1.5; }
 .pc-platform-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .pc-platform-card { min-width: 0; min-height: 230px; padding: 1.5rem; }
 .pc-platform-card__header { display: flex; flex-direction: column; gap: 0.45rem; margin-bottom: 1.25rem; }
@@ -2049,6 +2065,10 @@
 .pc-status-pill__badge { color: var(--pc-text-muted); }
 .pc-status-pill--online .pc-status-pill__indicator { background: var(--pc-accent-success); box-shadow: 0 0 10px var(--pc-accent-success); }
 .pc-status-pill__indicator { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: var(--pc-text-dim); }
+.pc-status-pill--development { border-color: rgba(251, 191, 36, 0.24); }
+.pc-status-pill--development .pc-status-pill__indicator { background: #fbbf24; }
+.pc-status-pill--development .pc-status-pill__badge { color: #fcd889; }
+.pc-passport-modal__row code { display: block; max-width: 100%; overflow-x: auto; white-space: nowrap; overflow-wrap: normal; font-family: var(--pc-font-mono); }
 
 /* Premium surface pass: preserve the existing workspace, improve depth and focus. */
 .pc-page {
@@ -2098,6 +2118,8 @@
 }
 
 @media (max-width: 640px) {
+	.pc-artwork-comparison__grid { grid-template-columns: 1fr; }
+	.pc-artwork-comparison img { height: 220px; }
 	.pc-intelligence__grid,
 	.pc-platform-grid { grid-template-columns: 1fr; }
 	.pc-sentinel { min-height: 0; padding: 1rem; }

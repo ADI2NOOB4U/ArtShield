@@ -144,7 +144,6 @@ export default function Protect() {
 	const audio = useAudioEngine();
 	const reducedMotion = useReducedMotion();
 	const [pipelinePhase, setPipelinePhase] = useState<number>(0);
-	const [tamperResistant, setTamperResistant] = useState<boolean>(true);
 	const [isDropActive, setIsDropActive] = useState(false);
 
 	function requireAuthentication(): boolean {
@@ -285,6 +284,15 @@ export default function Protect() {
 		} catch (downloadError) {
 			setDownloadMessage(downloadError instanceof Error ? `Download failed: ${downloadError.message}` : "Download failed.");
 		}
+	}
+
+	function continueToVerification() {
+		if (!result?.protected_image_base64) return;
+		const protectedFile = new File([base64AsBlob(result.protected_image_base64)], "artshield-protected.png", { type: "image/png" });
+		setArtifactToVerify(protectedFile);
+		setSelectedArtifactHash(result.protected_artifact_hash);
+		setVerification(null);
+		setError("");
 	}
 
 	async function verifySelectedArtwork() {
@@ -557,9 +565,9 @@ export default function Protect() {
 			integrityVerified: verification.authentic,
 			tamperDetected: !verification.authentic,
 			sha256Matched: verification.authentic,
+			artifactHashMatched: verification.authentic || !verification.reasons.includes("protected artifact hash mismatch"),
 			fingerprintMatched: verification.fingerprint_match,
 			watermarkMatched: verification.watermark_match === true,
-			confidence: verification.authentic ? 0.99 : 0.15,
 			details: verification.reasons.length ? verification.reasons.join("; ") : undefined,
 			referenceId: verificationReferences[selectedArtifactHash]?.sourceFingerprint.slice(0, 16),
 		};
@@ -663,8 +671,8 @@ export default function Protect() {
 						Cryptographic Shield for Digital Masterworks.
 					</h1>
 					<p className="pc-hero-header__lead">
-						Empowering artists, galleries, and institutions with dual-layer latent watermarks,
-						non-destructive perceptual encoding, and mathematical SHA-256 integrity proofs.
+						Empowering artists, galleries, and institutions with an LSB watermark, deterministic AI Shield frequency perturbation,
+						and a SHA-256 digest for integrity checks.
 					</p>
 				</section>
 
@@ -777,7 +785,7 @@ export default function Protect() {
 							<span className="pc-tag">STEP 02</span>
 							<h2 className="pc-glass-card__title">Security Configuration</h2>
 							<p className="pc-glass-card__desc">
-								Define cryptographic watermark payload and immutable metadata attributes.
+								Define cryptographic watermark payload and artifact metadata.
 							</p>
 						</div>
 
@@ -825,23 +833,6 @@ export default function Protect() {
 								/>
 							</div>
 
-							<div className="pc-toggle-row">
-								<div className="pc-toggle-label">
-									<span className="pc-toggle-title">Zero-Loss Frequency Hardening</span>
-									<span className="pc-toggle-sub">
-										High-fidelity protection resistant to compression & cropping
-									</span>
-								</div>
-								<label className="pc-switch" aria-label="Toggle Zero-Loss Frequency Hardening">
-									<input
-										type="checkbox"
-										checked={tamperResistant}
-										onChange={(e) => setTamperResistant(e.target.checked)}
-									/>
-									<span className="pc-switch__slider" />
-								</label>
-							</div>
-
 							<button
 								type="submit"
 								disabled={busy || !file}
@@ -868,7 +859,7 @@ export default function Protect() {
 												strokeLinejoin="round"
 											/>
 										</svg>
-										<span>EXECUTE ZERO-LOSS PROTECTION</span>
+									<span>PROTECT ARTWORK</span>
 									</>
 								)}
 							</button>
@@ -898,15 +889,15 @@ export default function Protect() {
 				{result && (
 					<CinematicProtectionResult
 						imageDataUrl={`data:image/png;base64,${result.protected_image_base64}`}
+						sourceImageUrl={filePreviewUrl}
 						sha256={result.protected_artifact_hash}
 						fingerprintHex={result.fingerprint}
 						watermark={result.watermark}
 						title={title}
 						artist={artist}
 						timestamp={new Date().toISOString()}
-						tamperResistant={tamperResistant}
-						verifiedAuthentic={true}
 						onDownload={downloadProtectedArtifact}
+						onVerifyThisFile={continueToVerification}
 						reducedMotion={reducedMotion}
 					/>
 				)}

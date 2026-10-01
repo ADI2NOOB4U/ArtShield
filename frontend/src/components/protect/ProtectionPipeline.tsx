@@ -8,14 +8,12 @@ export interface PipelineStep {
 }
 
 const PIPELINE_STEPS: PipelineStep[] = [
-	{ id: "upload", number: "01", title: "UPLOAD ARTWORK", subtext: "Binary ingestion & header parsing" },
-	{ id: "analyze", number: "02", title: "ANALYZE", subtext: "Perceptual frequency & structure check" },
-	{ id: "identity", number: "03", title: "IDENTITY", subtext: "Generating cryptographic fingerprint" },
-	{ id: "watermark", number: "04", title: "WATERMARK", subtext: "Imperceptible latent-space embedding" },
-	{ id: "ai-shield", number: "05", title: "AI SHIELD", subtext: "Applying defensive perturbation" },
-	{ id: "integrity", number: "06", title: "INTEGRITY", subtext: "Calculating SHA-256 seal" },
-	{ id: "provenance", number: "07", title: "PROVENANCE", subtext: "Preparing ownership record" },
-	{ id: "protected", number: "08", title: "PROTECTED", subtext: "Shielded artifact ready" },
+	{ id: "identity", number: "01", title: "IDENTITY", subtext: "SHA-256 artwork fingerprint" },
+	{ id: "watermark", number: "02", title: "WATERMARK", subtext: "LSB steganographic watermark" },
+	{ id: "ai-shield", number: "03", title: "AI SHIELD", subtext: "AI Shield · Deterministic frequency perturbation" },
+	{ id: "integrity", number: "04", title: "INTEGRITY", subtext: "Cryptographic parity and hash verification" },
+	{ id: "provenance", number: "05", title: "PROVENANCE", subtext: "Registry-backed artifact record" },
+	{ id: "rights", number: "06", title: "RIGHTS", subtext: "Usage-rights declaration · enforcement in development" },
 ];
 
 export type StepStatus = "idle" | "active" | "complete";
@@ -51,7 +49,7 @@ export const ProtectionPipeline: React.FC<ProtectionPipelineProps> = ({
 				</div>
 				<h2 className="pc-pipeline__title">Protection Sequence</h2>
 				<p className="pc-pipeline__desc">
-					The live request produces the protected artifact; this sequence visualizes the protection layers being applied while it runs.
+					The protection request produces the protected artifact; these steps show the six protection layers represented in the beta workspace.
 				</p>
 			</div>
 

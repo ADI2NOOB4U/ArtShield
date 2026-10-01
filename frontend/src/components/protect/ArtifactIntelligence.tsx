@@ -24,15 +24,15 @@ interface ArtifactIntelligenceProps {
 }
 
 type ImageFacts = { width: number; height: number };
-type ServiceState = "checking" | "online" | "offline" | "unavailable";
+type ServiceState = "checking" | "online" | "offline" | "unavailable" | "development";
 
 const DEFENSE_LAYERS = [
 	{ id: "identity", label: "01 IDENTITY", desc: "SHA-256 Digest" },
-	{ id: "watermark", label: "02 WATERMARK", desc: "Latent LSB Key" },
-	{ id: "ai_shield", label: "03 AI SHIELD", desc: "Frequency Hardening" },
-	{ id: "integrity", label: "04 INTEGRITY", desc: "Parity Checksum" },
-	{ id: "provenance", label: "05 PROVENANCE", desc: "On-Chain Record" },
-	{ id: "rights", label: "06 RIGHTS", desc: "Usage License" },
+	{ id: "watermark", label: "02 WATERMARK", desc: "LSB steganographic watermark" },
+	{ id: "ai_shield", label: "03 AI SHIELD", desc: "AI Shield - Deterministic frequency perturbation" },
+	{ id: "integrity", label: "04 INTEGRITY", desc: "Hash and watermark checks" },
+	{ id: "provenance", label: "05 PROVENANCE", desc: "Registry record - on-chain in development" },
+	{ id: "rights", label: "06 RIGHTS", desc: "Declaration - enforcement in development" },
 ];
 
 function short(value?: string) {
@@ -66,8 +66,14 @@ export function ArtifactIntelligence({
 		FRONTEND: "online",
 		BACKEND: "checking",
 		"ML ENGINE": "checking",
-		BLOCKCHAIN: "checking",
+		BLOCKCHAIN: "development",
 	});
+	useEffect(() => {
+		if (!passportOpen) return;
+		const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") setPassportOpen(false); };
+		window.addEventListener("keydown", onKeyDown);
+		return () => window.removeEventListener("keydown", onKeyDown);
+	}, [passportOpen]);
 
 	useEffect(() => {
 		if (!file) {
@@ -100,7 +106,7 @@ export function ArtifactIntelligence({
 						FRONTEND: "online",
 						BACKEND: value.backend ? "online" : "offline",
 						"ML ENGINE": value.ml ? "online" : "offline",
-						BLOCKCHAIN: value.blockchain ? "online" : "offline",
+						BLOCKCHAIN: "development",
 					});
 				}
 			})
@@ -110,7 +116,7 @@ export function ArtifactIntelligence({
 						FRONTEND: "online",
 						BACKEND: "offline",
 						"ML ENGINE": "unavailable",
-						BLOCKCHAIN: "unavailable",
+						BLOCKCHAIN: "development",
 					});
 				}
 			});
@@ -126,9 +132,11 @@ export function ArtifactIntelligence({
 			artist: artist || "Anonymous Principal",
 			sha256Seal: result?.protected_artifact_hash || "NOT_GENERATED",
 			fingerprint: result?.fingerprint || "NOT_GENERATED",
-			watermarkStatus: result ? "Embedded Latent Frequency" : "Pending",
-			aiShieldStatus: result ? "Active Perturbation Hardening" : "Pending",
-			integrityStatus: result ? "Client Verification Reference Active" : "Pending",
+			watermarkStatus: result ? "LSB watermark embedded" : "Pending",
+			aiShieldStatus: result ? "AI Shield - Deterministic frequency perturbation applied" : "Pending",
+			integrityStatus: result ? "Protected artifact SHA-256 generated; verification available" : "Pending",
+			rightsStatus: "Declaration only - enforcement in development",
+			blockchainStatus: certificate ? "Anchored certificate record" : "Not anchored - registry record only",
 			certificate: certificate
 				? {
 						tokenId: certificate.tokenId,
@@ -156,7 +164,7 @@ export function ArtifactIntelligence({
 			list.push(["OWNER", short(provenance.owner)]);
 		}
 		if (provenance?.registered) {
-			list.push(["PROVENANCE", `${provenance.entries?.length ?? 0} on-chain entry/entries`]);
+			list.push(["PROVENANCE", `${provenance.entries?.length ?? 0} registry entr${(provenance.entries?.length ?? 0) === 1 ? "y" : "ies"}`]);
 		}
 		return list;
 	}, [file, result, certificate, provenance]);
@@ -172,7 +180,7 @@ export function ArtifactIntelligence({
 					</div>
 					<h2 className="pc-section-header__title">Artifact Sentinel</h2>
 					<p className="pc-section-header__subtitle">
-						Real-time cryptographic posture and deep forensic inspection derived from workspace operations.
+						Workspace state, artifact records and service connectivity from completed operations.
 					</p>
 				</div>
 
@@ -206,17 +214,19 @@ export function ArtifactIntelligence({
 						{/* 6 Defense Layer Chips */}
 						<div className="pc-sentinel__layers" role="list">
 							{DEFENSE_LAYERS.map((layer) => {
-								const isSecured = Boolean(result);
+								const layerStatus = !result ? "PENDING" : layer.id === "provenance" ? (certificate ? "ANCHORED" : "NOT ANCHORED · REGISTRY ONLY") : layer.id === "rights" ? "DECLARATION ONLY" : layer.id === "integrity" ? "READY TO VERIFY" : layer.id === "watermark" ? "EMBEDDED" : "APPLIED";
+								const isDevelopment = (layer.id === "provenance" && !certificate) || layer.id === "rights";
 								return (
 									<div
 										key={layer.id}
-										className={`pc-sentinel__chip ${isSecured ? "pc-sentinel__chip--secured" : ""}`}
+										className={`pc-sentinel__chip ${result && !isDevelopment ? "pc-sentinel__chip--secured" : ""} ${isDevelopment ? "pc-sentinel__chip--development" : ""}`}
 										role="listitem"
 									>
 										<span className="pc-sentinel__chip-dot" />
 										<div className="pc-sentinel__chip-info">
 											<span className="pc-sentinel__chip-label">{layer.label}</span>
 											<span className="pc-sentinel__chip-desc">{layer.desc}</span>
+											<span className="pc-sentinel__chip-state">{layerStatus}</span>
 										</div>
 									</div>
 								);
@@ -238,31 +248,36 @@ export function ArtifactIntelligence({
 							<span className="pc-tag pc-tag--accent">IDENTITY RECORD</span>
 							<h3 className="pc-passport-card__title">Artifact Passport</h3>
 							<p className="pc-passport-card__desc">
-								Portable, verifiable cryptographic identity certificate. Encapsulates fingerprint, watermark
-								signature, and blockchain references into a tamper-evident dossier.
+								Portable record of this artifact fingerprint, watermark and verification data. On-chain anchoring is in development.
 							</p>
 						</div>
 
 						<div className="pc-passport-card__preview-data">
 							<div className="pc-meta-row">
-								<span className="pc-meta-row__label">CANONICAL ID</span>
-								<code className="pc-meta-row__val pc-meta-row__val--mono">
+								<span className="pc-meta-row__label">ARTIFACT ID</span>
+									<code className="pc-meta-row__val pc-meta-row__val--mono" title={result?.fingerprint}>
 									{result ? short(result.fingerprint) : "Pending protection"}
 								</code>
+								{result && <button type="button" className="pc-passport-copy" onClick={() => void navigator.clipboard?.writeText(result.fingerprint)}>COPY ID</button>}
 							</div>
+							<p className="pc-passport-explainer">Artifact ID: derived from the registered artifact identity.</p>
 							<div className="pc-meta-row">
-								<span className="pc-meta-row__label">ARTIFACT SEAL</span>
-								<code className="pc-meta-row__val pc-meta-row__val--mono">
+								<span className="pc-meta-row__label">SHA-256 SEAL</span>
+								<code className="pc-meta-row__val pc-meta-row__val--mono" title={result?.protected_artifact_hash}>
 									{result ? short(result.protected_artifact_hash) : "Pending protection"}
 								</code>
+								{result && <button type="button" className="pc-passport-copy" onClick={() => void navigator.clipboard?.writeText(result.protected_artifact_hash)}>COPY SEAL</button>}
 							</div>
+							<p className="pc-passport-explainer">SHA-256 Seal: cryptographic digest of the protected file.</p>
 							<div className="pc-meta-row">
 								<span className="pc-meta-row__label">SECURITY POSTURE</span>
 								<span className="pc-meta-row__val pc-meta-row__val--accent">
-									{result ? "PROTECTED & REGISTERED" : "UNPROTECTED CANDIDATE"}
+								{result ? "PROTECTED / REGISTERED" : "UNPROTECTED CANDIDATE"}
 								</span>
 							</div>
 						</div>
+
+						<p className="pc-passport-explainer">Provenance: Not anchored; registry record only.<br />Rights: Declaration only; not enforced.</p>
 
 						<div className="pc-passport-card__actions">
 							<button
@@ -291,7 +306,7 @@ export function ArtifactIntelligence({
 				{/* 1. Live Artifact Forensics */}
 				<article className="pc-platform-card">
 					<div className="pc-platform-card__header">
-						<span className="pc-platform-card__eyebrow">LIVE ARTIFACT FORENSICS</span>
+						<span className="pc-platform-card__eyebrow">ARTIFACT FORENSICS</span>
 						<h3 className="pc-platform-card__title">Binary & Visual Examination</h3>
 					</div>
 					{file ? (
@@ -332,43 +347,43 @@ export function ArtifactIntelligence({
 					)}
 				</article>
 
-				{/* 2. Chain of Custody Timeline */}
+				{/* 2. Processing Lifecycle */}
 				<article className="pc-platform-card">
 					<div className="pc-platform-card__header">
-						<span className="pc-platform-card__eyebrow">CHAIN OF CUSTODY</span>
-						<h3 className="pc-platform-card__title">Integrity Lifecycle Log</h3>
+						<span className="pc-platform-card__eyebrow">PROCESSING LIFECYCLE</span>
+						<h3 className="pc-platform-card__title">Processing Lifecycle</h3>
 					</div>
 					<ol className="pc-timeline">
 						<li className={`pc-timeline__item ${file ? "pc-timeline__item--active" : ""}`}>
 							<span className="pc-timeline__marker" />
 							<div className="pc-timeline__content">
-								<b>01 INGESTED</b>
-								<span>{file ? `Local asset: ${file.name}` : "Awaiting candidate file"}</span>
+								<b>01 IDENTITY</b>
+								<span>{result ? "SHA-256 artwork fingerprint generated" : "Pending protection"}</span>
 							</div>
 						</li>
 						<li className={`pc-timeline__item ${result ? "pc-timeline__item--active" : ""}`}>
 							<span className="pc-timeline__marker" />
 							<div className="pc-timeline__content">
-								<b>02 IDENTIFIED & WATERMARKED</b>
-								<span>{result ? "Dual-layer cryptographic watermark embedded" : "Pending pipeline run"}</span>
+								<b>02 WATERMARK</b>
+								<span>{result ? "LSB steganographic watermark embedded" : "Pending protection"}</span>
 							</div>
 						</li>
-						<li className={`pc-timeline__item ${certificate ? "pc-timeline__item--active" : ""}`}>
+						<li className={`pc-timeline__item ${result ? "pc-timeline__item--active" : ""}`}>
 							<span className="pc-timeline__marker" />
 							<div className="pc-timeline__content">
-								<b>03 ON-CHAIN CERTIFICATE</b>
-								<span>{certificate ? `Token #${certificate.tokenId} issued` : "Optional blockchain issuance"}</span>
+								<b>03 AI SHIELD</b>
+								<span>{result ? "AI Shield - Deterministic frequency perturbation applied" : "Pending protection"}</span>
 							</div>
 						</li>
-						<li className={`pc-timeline__item ${provenance?.registered ? "pc-timeline__item--active" : ""}`}>
+						<li className={`pc-timeline__item ${result ? "pc-timeline__item--active" : ""}`}>
 							<span className="pc-timeline__marker" />
 							<div className="pc-timeline__content">
-								<b>04 REGISTRY PROVENANCE</b>
-								<span>
-									{provenance?.registered ? `${provenance.entries?.length ?? 1} history entry recorded` : "Registry unlinked"}
-								</span>
+								<b>04 INTEGRITY</b>
+								<span>{result ? "Protected file SHA-256 generated; verification available" : "Pending protection"}</span>
 							</div>
 						</li>
+						<li className={`pc-timeline__item ${result ? "pc-timeline__item--active" : ""}`}><span className="pc-timeline__marker" /><div className="pc-timeline__content"><b>05 PROVENANCE</b><span>{certificate ? `Certificate token #${certificate.tokenId} issued` : result ? "Not anchored - registry record only" : "Pending protection"}</span></div></li>
+						<li className="pc-timeline__item"><span className="pc-timeline__marker" /><div className="pc-timeline__content"><b>06 RIGHTS</b><span>Declaration only - not enforced</span></div></li>
 					</ol>
 				</article>
 
@@ -431,14 +446,14 @@ export function ArtifactIntelligence({
 			<section className="pc-system-status" aria-label="System status monitor">
 				<div className="pc-system-status__header">
 					<span className="pc-platform-card__eyebrow">SYSTEM STATUS</span>
-					<h4 className="pc-system-status__title">Exhibition Node Monitor</h4>
+					<h4 className="pc-system-status__title">Service Status</h4>
 				</div>
 				<div className="pc-system-status__grid">
 					{Object.entries(services).map(([name, state]) => (
 						<div key={name} className={`pc-status-pill pc-status-pill--${state}`}>
 							<span className="pc-status-pill__indicator" />
 							<span className="pc-status-pill__name">{name}</span>
-							<span className="pc-status-pill__badge">{state.toUpperCase()}</span>
+							<span className="pc-status-pill__badge">{state === "development" ? "IN DEVELOPMENT" : state.toUpperCase()}</span>
 						</div>
 					))}
 				</div>
@@ -446,7 +461,7 @@ export function ArtifactIntelligence({
 
 			{/* Artifact Passport Modal */}
 			{passportOpen && (
-				<div className="pc-passport-backdrop" role="dialog" aria-modal="true" aria-label="Artifact Passport">
+				<div className="pc-passport-backdrop" role="dialog" aria-modal="true" aria-labelledby="passport-title" onMouseDown={(event) => { if (event.target === event.currentTarget) setPassportOpen(false); }}>
 					<div className="pc-passport-modal">
 						<button
 							type="button"
@@ -458,8 +473,8 @@ export function ArtifactIntelligence({
 						</button>
 
 						<div className="pc-passport-modal__head">
-							<span className="pc-tag pc-tag--accent">OFFICIAL PASSPORT</span>
-							<h3 className="pc-passport-modal__title">{title || "Untitled Masterwork"}</h3>
+							<span className="pc-tag pc-tag--accent">PORTABLE ARTIFACT RECORD</span>
+							<h3 id="passport-title" className="pc-passport-modal__title">{title || "Untitled Masterwork"}</h3>
 							<p className="pc-passport-modal__sub">Creator: {artist || "Anonymous Principal"}</p>
 						</div>
 
@@ -474,9 +489,9 @@ export function ArtifactIntelligence({
 								.filter(([, val]) => val !== undefined)
 								.map(([key, val]) => (
 									<div key={key} className="pc-passport-modal__row">
-										<dt>{key.replace(/([A-Z])/g, " $1").toUpperCase()}</dt>
-										<dd>
-											<code>{typeof val === "object" ? JSON.stringify(val) : String(val)}</code>
+										<dt>{key === "artifactId" ? "ARTIFACT ID" : key === "sha256Seal" ? "SHA-256 SEAL" : key.replace(/([A-Z])/g, " $1").toUpperCase()}</dt>
+											<dd>
+											<code title={typeof val === "string" && /^[a-f0-9]{64}$/i.test(val) ? val : undefined}>{typeof val === "object" ? JSON.stringify(val) : String(val)}</code>
 										</dd>
 									</div>
 								))}

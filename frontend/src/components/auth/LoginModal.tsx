@@ -39,7 +39,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
 		}
 	};
 
-	const handleDemoSelect = (preset: "creator" | "studio") => {
+	const handleProfileSelect = (preset: "creator" | "studio") => {
 		const profile = DEMO_PROFILES[preset];
 		setName(profile.name);
 		setUsername(profile.email);
@@ -48,7 +48,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
 	};
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+		<div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4" role="dialog" aria-modal="true" aria-labelledby="login-modal-title">
 			{/* Backdrop */}
 			<div
 				className="fixed inset-0 bg-ink-950/80 backdrop-blur-md transition-opacity duration-300"
@@ -57,7 +57,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
 			/>
 
 			{/* Modal Body */}
-			<div className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-ink-900/90 p-6 sm:p-8 shadow-2xl backdrop-blur-2xl transition-all duration-300">
+			<div className="relative my-auto max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-ink-900/90 p-6 sm:p-8 shadow-2xl backdrop-blur-2xl transition-all duration-300">
 				{/* Close Button */}
 				<button
 					type="button"
@@ -78,23 +78,23 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
 							AUTHENTICATION SUITE
 						</span>
 					</div>
-					<h2 className="font-display text-2xl font-semibold tracking-tight text-silver-50">
+					<h2 id="login-modal-title" className="font-display text-2xl font-semibold tracking-tight text-silver-50">
 						Identity Verification
 					</h2>
 					<p className="text-xs leading-relaxed text-silver-400">
-						Select a demo identity or provide your creator credentials to access registered certificates and provenance keys.
+						Select a beta workspace profile to prefill its username, or provide your server-issued credentials.
 					</p>
 				</div>
 
-				{/* Demo Quick Selection */}
+				{/* Beta Workspace Profiles */}
 				<div className="mt-6 flex flex-col gap-2.5">
 					<span className="font-mono text-[10px] uppercase tracking-wider text-silver-400">
-						QUICK DEMO PROFILES
+						BETA WORKSPACE PROFILES
 					</span>
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 						<button
 							type="button"
-							onClick={() => handleDemoSelect("creator")}
+							onClick={() => handleProfileSelect("creator")}
 							className="group flex flex-col items-start gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-3.5 text-left transition-all hover:border-ice-400/40 hover:bg-white/[0.06]"
 						>
 							<div className="flex w-full items-center justify-between">
@@ -110,7 +110,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
 
 						<button
 							type="button"
-							onClick={() => handleDemoSelect("studio")}
+							onClick={() => handleProfileSelect("studio")}
 							className="group flex flex-col items-start gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-3.5 text-left transition-all hover:border-indigo-400/40 hover:bg-white/[0.06]"
 						>
 							<div className="flex w-full items-center justify-between">
@@ -152,7 +152,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
 
 					<div className="flex flex-col gap-1">
 						<label className="font-mono text-[10px] uppercase tracking-wider text-silver-400" htmlFor="login-email">
-							SERVER USERNAME / DEMO IDENTITY
+							SERVER USERNAME
 						</label>
 						<input
 							id="login-email"
@@ -177,7 +177,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
 							required
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}
-							placeholder="Server-issued exhibition credential"
+							placeholder="Server-issued password"
 							className="rounded-lg border border-white/10 bg-black/40 px-3.5 py-2 font-sans text-xs text-silver-100 placeholder:text-silver-600 focus:border-ice-400 focus:outline-none focus:ring-1 focus:ring-ice-400"
 						/>
 					</div>
@@ -216,14 +216,14 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
 						type="submit"
 						className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-ice-400 to-blue-600 py-2.5 font-display text-xs font-semibold tracking-wide text-white shadow-lg transition-transform active:scale-[0.98] hover:shadow-ice-400/20"
 					>
-						<span>AUTHENTICATE DEMO SESSION</span>
+						<span>SIGN IN TO BETA WORKSPACE</span>
 						<svg width="14" height="14" viewBox="0 0 16 16" fill="none">
 							<path d="M6 3L11 8L6 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
 						</svg>
 					</button>
 
 					<p className="text-center font-mono text-[10px] text-silver-500">
-						{error || "Server-validated exhibition session"}
+						{error || "Server-validated session"}
 					</p>
 				</form>
 			</div>

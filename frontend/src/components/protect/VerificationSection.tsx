@@ -6,9 +6,9 @@ export interface VerificationResultData {
 	integrityVerified: boolean;
 	tamperDetected: boolean;
 	sha256Matched?: boolean;
+	artifactHashMatched?: boolean;
 	fingerprintMatched?: boolean;
 	watermarkMatched?: boolean;
-	confidence?: number;
 	details?: string;
 	referenceId?: string;
 	timestamp?: string;
@@ -57,15 +57,15 @@ export const VerificationSection: React.FC<VerificationSectionProps> = ({
 	};
 
 	return (
-		<section className="pc-verify-section" aria-label="Cryptographic Verification Lab">
+		<section id="verification" className="pc-verify-section" aria-label="Deterministic Verification">
 			<div className="pc-section-header">
 				<div className="pc-tag pc-tag--cyan">
 					<span className="pc-tag__dot" />
 					<span>INTEGRITY VERIFICATION SUITE</span>
 				</div>
-				<h2 className="pc-section-header__title">Audit & Authenticate</h2>
+				<h2 className="pc-section-header__title">Verify Artifact</h2>
 				<p className="pc-section-header__subtitle">
-					Validate physical and digital artwork integrity against immutable mathematical fingerprints.
+				Compare the selected file with its saved protected-artifact reference.
 				</p>
 			</div>
 
@@ -276,19 +276,14 @@ export const VerificationSection: React.FC<VerificationSectionProps> = ({
 												strokeLinejoin="round"
 											/>
 										</svg>
-										<span>AUTHENTIC ARTIFACT</span>
+									<span>MATCHES REGISTERED ARTIFACT</span>
 									</div>
-									{verificationResult.confidence !== undefined && (
-										<span className="pc-verdict__confidence">
-											{Math.round(verificationResult.confidence * 100)}% CONFIDENCE
-										</span>
-									)}
 								</div>
 
 								<div className="pc-verdict__title-block">
-									<span className="pc-verdict__big-label">INTEGRITY VERIFIED</span>
+										<span className="pc-verdict__big-label">2 / 2 CHECKS PASSED</span>
 									<p className="pc-verdict__lead">
-										Cryptographic fingerprint and SHA-256 seal match original registration ledger with zero unauthorized modifications.
+										The candidate matches the selected registered artifact reference.
 									</p>
 								</div>
 
@@ -297,17 +292,17 @@ export const VerificationSection: React.FC<VerificationSectionProps> = ({
 									<div className="pc-check-item pc-check-item--pass">
 										<span className="pc-check-item__indicator">✓</span>
 										<div className="pc-check-item__content">
-											<span className="pc-check-item__label">SHA-256 SEAL INTEGRITY</span>
-											<span className="pc-check-item__status">MATCH CONFIRMED</span>
+										<span className="pc-check-item__label">DETERMINISTIC CHECK · PROTECTED SHA-256</span>
+											<span className="pc-check-item__status">MATCH</span>
 										</div>
 									</div>
 
 									<div className="pc-check-item pc-check-item--pass">
 										<span className="pc-check-item__indicator">✓</span>
 										<div className="pc-check-item__content">
-											<span className="pc-check-item__label">LATENT WATERMARK KEY</span>
+										<span className="pc-check-item__label">DETERMINISTIC CHECK · WATERMARK</span>
 											<span className="pc-check-item__status">
-												{verificationResult.watermarkMatched ? "RECOVERED & VERIFIED" : "REGISTERED"}
+												{verificationResult.watermarkMatched ? "MATCH" : "REGISTERED"}
 											</span>
 										</div>
 									</div>
@@ -315,8 +310,8 @@ export const VerificationSection: React.FC<VerificationSectionProps> = ({
 									<div className="pc-check-item pc-check-item--pass">
 										<span className="pc-check-item__indicator">✓</span>
 										<div className="pc-check-item__content">
-											<span className="pc-check-item__label">TAMPER RESISTANCE</span>
-											<span className="pc-check-item__status">NO ANOMALIES DETECTED</span>
+										<span className="pc-check-item__label">SOURCE FINGERPRINT</span>
+											<span className="pc-check-item__status">{verificationResult.fingerprintMatched ? "MATCH" : "INFORMATIONAL"}</span>
 										</div>
 									</div>
 								</div>
@@ -343,7 +338,7 @@ export const VerificationSection: React.FC<VerificationSectionProps> = ({
 												strokeLinecap="round"
 											/>
 										</svg>
-										<span>TAMPERING DETECTED</span>
+										<span>MODIFICATION DETECTED</span>
 									</div>
 								</div>
 
@@ -353,7 +348,7 @@ export const VerificationSection: React.FC<VerificationSectionProps> = ({
 									</span>
 									<p className="pc-verdict__lead">
 										{verificationResult.details ||
-											"The submitted asset failed cryptographic seal verification. One or more bytes or visual frequency bands have been modified."}
+											"The submitted file differs from the registered artifact."}
 									</p>
 								</div>
 
@@ -361,16 +356,16 @@ export const VerificationSection: React.FC<VerificationSectionProps> = ({
 									<div className="pc-check-item pc-check-item--fail">
 										<span className="pc-check-item__indicator">✕</span>
 										<div className="pc-check-item__content">
-											<span className="pc-check-item__label">SHA-256 PARITY</span>
-											<span className="pc-check-item__status">MISMATCH</span>
+										<span className="pc-check-item__label">DETERMINISTIC CHECK · PROTECTED SHA-256</span>
+											<span className="pc-check-item__status">{verificationResult.artifactHashMatched ? "MATCH" : "MISMATCH"}</span>
 										</div>
 									</div>
 
 									<div className="pc-check-item pc-check-item--fail">
 										<span className="pc-check-item__indicator">✕</span>
 										<div className="pc-check-item__content">
-											<span className="pc-check-item__label">WATERMARK RECOVERY</span>
-											<span className="pc-check-item__status">DISTORTED OR UNRECOGNIZED</span>
+										<span className="pc-check-item__label">DETERMINISTIC CHECK · WATERMARK</span>
+											<span className="pc-check-item__status">{verificationResult.watermarkMatched ? "MATCH" : "MISMATCH"}</span>
 										</div>
 									</div>
 								</div>

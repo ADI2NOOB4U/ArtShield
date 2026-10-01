@@ -3,29 +3,31 @@ import { usePointerParallax } from "../../hooks/usePointerParallax";
 
 export interface ProtectionResultProps {
 	imageDataUrl: string;
+	sourceImageUrl?: string | null;
 	sha256: string;
 	fingerprintHex: string;
 	watermark: string;
 	title: string;
 	artist: string;
 	timestamp: string;
-	tamperResistant: boolean;
 	verifiedAuthentic?: boolean;
 	onDownload: () => void;
+	onVerifyThisFile: () => void;
 	reducedMotion?: boolean;
 }
 
 export const ProtectionResult: React.FC<ProtectionResultProps> = ({
 	imageDataUrl,
+	sourceImageUrl,
 	sha256,
 	fingerprintHex,
 	watermark,
 	title,
 	artist,
 	timestamp,
-	tamperResistant,
 	verifiedAuthentic,
 	onDownload,
+	onVerifyThisFile,
 	reducedMotion = false,
 }) => {
 	const cardRef = useRef<HTMLDivElement | null>(null);
@@ -80,6 +82,15 @@ export const ProtectionResult: React.FC<ProtectionResultProps> = ({
 						</div>
 					</div>
 				</div>
+				{sourceImageUrl && (
+					<div className="pc-artwork-comparison" aria-label="Original and protected artwork comparison">
+						<p className="pc-platform-card__eyebrow">ORIGINAL TO PROTECTED</p>
+						<div className="pc-artwork-comparison__grid">
+							<figure><img src={sourceImageUrl} alt="Original uploaded artwork" /><figcaption>ORIGINAL</figcaption></figure>
+							<figure><img src={imageDataUrl} alt="Protected artwork" /><figcaption>PROTECTED</figcaption></figure>
+						</div>
+					</div>
+				)}
 
 				{/* Security Certificate Panel */}
 				<div className="pc-cert-panel">
@@ -106,11 +117,11 @@ export const ProtectionResult: React.FC<ProtectionResultProps> = ({
 									strokeLinejoin="round"
 								/>
 							</svg>
-							<span>CRYPTOGRAPHIC CERTIFICATE</span>
+							<span>ARTIFACT PASSPORT</span>
 						</div>
-						<h3 className="pc-cert-panel__title">Shield Artifact Verified</h3>
+						<h3 className="pc-cert-panel__title">Protected Artifact Ready</h3>
 						<p className="pc-cert-panel__subtitle">
-							Immutable provenance record generated and ready for cryptographic deployment.
+							Portable record of this artifact's fingerprint, watermark and verification data. On-chain anchoring is in development.
 						</p>
 					</div>
 
@@ -130,13 +141,6 @@ export const ProtectionResult: React.FC<ProtectionResultProps> = ({
 							<span className="pc-meta-row__label">TIMESTAMP (UTC)</span>
 							<span className="pc-meta-row__val pc-meta-row__val--mono">
 								{timestamp ? new Date(timestamp).toUTCString() : "Just now"}
-							</span>
-						</div>
-
-						<div className="pc-meta-row">
-							<span className="pc-meta-row__label">TAMPER RESISTANCE</span>
-							<span className="pc-meta-row__val pc-meta-row__val--badge">
-								{tamperResistant ? "ACTIVE (HIGH FIDELITY)" : "STANDARD"}
 							</span>
 						</div>
 
@@ -164,7 +168,7 @@ export const ProtectionResult: React.FC<ProtectionResultProps> = ({
 									{copiedKey === "sha256" ? "COPIED" : "COPY HASH"}
 								</button>
 							</div>
-							<div className="pc-hash-box__value">
+							<div className="pc-hash-box__value" title={sha256}>
 								<code>{sha256}</code>
 							</div>
 						</div>
@@ -181,7 +185,7 @@ export const ProtectionResult: React.FC<ProtectionResultProps> = ({
 									{copiedKey === "fingerprint" ? "COPIED" : "COPY HASH"}
 								</button>
 							</div>
-							<div className="pc-hash-box__value">
+							<div className="pc-hash-box__value" title={fingerprintHex}>
 								<code>{fingerprintHex}</code>
 							</div>
 						</div>
@@ -219,7 +223,18 @@ export const ProtectionResult: React.FC<ProtectionResultProps> = ({
 							</svg>
 							<span>DOWNLOAD PROTECTED ARTIFACT</span>
 						</button>
+						<a href="#verification" onClick={onVerifyThisFile} className="pc-btn pc-btn--secondary pc-btn--download">VERIFY THIS FILE</a>
 					</div>
+				</div>
+				<div className="pc-result-layer-status" aria-label="Protection layer status">
+					{[
+						["01 Identity", "Applied", "complete"],
+						["02 Watermark", "Embedded", "complete"],
+						["03 AI Shield", "Applied", "complete"],
+						["04 Integrity", "Ready to verify", "pending"],
+						["05 Provenance", "Not anchored · registry record only", "development"],
+						["06 Rights", "Declaration only · not enforced", "development"],
+					].map(([label, status, state]) => <div key={label} className={`pc-result-layer-status__item pc-result-layer-status__item--${state}`}><span>{label}</span><span>{status}</span></div>)}
 				</div>
 			</div>
 		</section>
