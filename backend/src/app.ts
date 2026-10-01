@@ -61,6 +61,8 @@ function parseProtectionBody(body: ProtectionBody): { imageBase64: string; water
 
 async function callMl(path: string, body: ProtectionBody | VerificationBody): Promise<unknown> {
 	const parsed = parseProtectionBody(body);
+	const target = new URL(`${mlServiceUrl}${path}`);
+	const mlToken = process.env.ML_SERVICE_TOKEN;
 	const form = new FormData();
 	form.append("image", new Blob([Buffer.from(parsed.imageBase64, "base64")], { type: "image/png" }), "artwork.png");
 	form.append("metadata_json", JSON.stringify(parsed.metadata));
@@ -87,14 +89,24 @@ async function callMl(path: string, body: ProtectionBody | VerificationBody): Pr
 	}
 	let response: globalThis.Response;
 	try {
-		response = await fetch(`${mlServiceUrl}${path}`, {
+		response = await fetch(target, {
 			method: "POST", body: form, signal: AbortSignal.timeout(15000),
-			headers: process.env.ML_SERVICE_TOKEN ? { "x-artshield-ml-token": process.env.ML_SERVICE_TOKEN } : undefined,
+			headers: mlToken ? { "x-artshield-ml-token": mlToken } : undefined,
 		});
-	} catch {
+	} catch (error) {
+		const errorName = error instanceof Error ? error.name : "UnknownError";
+		const errorMessage = error instanceof Error ? error.message : "Unknown network failure";
+		const sanitizedError = (mlToken ? errorMessage.replaceAll(mlToken, "[redacted]") : errorMessage).replace(/Bearer\s+\S+/gi, "Bearer [redacted]");
+		console.error("ML upstream network error", JSON.stringify({ hostname: target.hostname, path: target.pathname, tokenConfigured: Boolean(mlToken), error: errorName, reason: sanitizedError }));
 		throw new MlServiceError(503, "ML service is unavailable");
 	}
 	if (!response.ok) {
+		const upstreamBody = await response.text();
+		const sanitizedBody = (mlToken ? upstreamBody.replaceAll(mlToken, "[redacted]") : upstreamBody)
+			.replace(/Bearer\s+\S+/gi, "Bearer [redacted]")
+			.replace(/(?:data:[^,]+;base64,)?[A-Za-z0-9+/]{80,}={0,2}/g, "[redacted-base64]")
+			.slice(0, 500);
+		console.error("ML upstream response", JSON.stringify({ hostname: target.hostname, path: target.pathname, status: response.status, tokenConfigured: Boolean(mlToken), response: sanitizedBody }));
 		const statusCode = response.status >= 400 && response.status < 500 ? response.status : 502;
 		throw new MlServiceError(statusCode, response.status >= 500 ? "ML service failed" : "ML service rejected the request");
 	}
