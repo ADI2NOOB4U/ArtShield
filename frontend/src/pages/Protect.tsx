@@ -1028,13 +1028,12 @@ export default function Protect() {
 										/>
 									</div>
 
-									<div style={{ display: "flex", gap: "1rem" }}>
+									<div className="pc-provenance-actions">
 										<button
 											type="button"
 											onClick={createCertificate}
 											disabled={certificateBusy}
 											className="pc-btn pc-btn--primary"
-											style={{ flex: 1 }}
 										>
 											{certificateBusy ? "Submitting…" : "Create Certificate"}
 										</button>
@@ -1042,7 +1041,6 @@ export default function Protect() {
 											type="button"
 											onClick={registerProvenance}
 											className="pc-btn pc-btn--secondary"
-											style={{ flex: 1 }}
 										>
 											Register Provenance
 										</button>
