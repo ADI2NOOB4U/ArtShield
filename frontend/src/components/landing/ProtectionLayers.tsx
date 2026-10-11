@@ -15,10 +15,54 @@ function StageArtwork({ active, id }: { active: number; id: string }) {
 }
 
 function StageList({ active, onSelect }: { active: number; onSelect?: (idx: number) => void }) {
-	return <ol className="flex flex-col gap-2">{PROTECTION_STAGES.map((stage, index) => { const isActive = index === active; const isPast = index < active; return <li key={stage.id} onClick={() => onSelect?.(index)} className={`group cursor-pointer rounded-xl border p-5 transition-all duration-300 ${isActive ? "border-ice-400/40 bg-white/[0.04] shadow-[0_0_30px_rgba(56,189,248,0.1)]" : isPast ? "border-white/10 bg-white/[0.015] opacity-75 hover:border-white/20 hover:opacity-100" : "border-transparent bg-transparent opacity-40 hover:opacity-75"}`}><div className="flex items-start gap-4"><span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg font-mono text-xs font-bold ${isActive ? "border border-ice-400/40 bg-ice-400/20 text-ice-300" : "bg-white/5 text-silver-400"}`}>{stage.index}</span><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-4"><h3 className={`font-display text-lg font-semibold tracking-wide ${isActive ? "text-silver-50" : "text-silver-300"}`}>{stage.name}</h3><span className="font-mono text-[10px] uppercase tracking-wider text-ice-400">{stage.technical}</span></div><div className={`grid transition-all duration-500 ease-premium ${isActive ? "mt-2 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}><p className="min-h-0 overflow-hidden text-xs leading-relaxed text-silver-400">{stage.description}</p></div></div></div></li>; })}</ol>;
+	return (
+		<ol className="flex flex-col gap-2">
+			{PROTECTION_STAGES.map((stage, index) => {
+				const isActive = index === active;
+				const isPast = index < active;
+				return (
+					<li key={stage.id}>
+						<button
+							type="button"
+							aria-pressed={isActive}
+							onClick={() => onSelect?.(index)}
+							className={`group w-full cursor-pointer rounded-xl border p-5 text-left transition-all duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ice-400 ${
+								isActive
+									? "border-ice-400/40 bg-white/[0.04] shadow-[0_0_30px_rgba(56,189,248,0.1)]"
+									: isPast
+										? "border-white/10 bg-white/[0.015] opacity-75 hover:border-white/20 hover:opacity-100"
+										: "border-transparent bg-transparent opacity-40 hover:opacity-75"
+							}`}
+						>
+							<div className="flex items-start gap-4">
+								<span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg font-mono text-xs font-bold ${isActive ? "border border-ice-400/40 bg-ice-400/20 text-ice-300" : "bg-white/5 text-silver-400"}`}>
+									{stage.index}
+								</span>
+								<div className="min-w-0 flex-1">
+									<div className="flex items-center justify-between gap-4">
+										<h3 className={`font-display text-lg font-semibold tracking-wide ${isActive ? "text-silver-50" : "text-silver-300"}`}>
+											{stage.name}
+										</h3>
+										<span className="font-mono text-[10px] uppercase tracking-wider text-ice-400">
+											{stage.technical}
+										</span>
+									</div>
+									<div className={`grid transition-all duration-500 ease-premium ${isActive ? "mt-2 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+										<p className="min-h-0 overflow-hidden text-xs leading-relaxed text-silver-400">
+											{stage.description}
+										</p>
+									</div>
+								</div>
+							</div>
+						</button>
+					</li>
+				);
+			})}
+		</ol>
+	);
 }
 
 export default function ProtectionLayers() {
 	const trackRef = useRef<HTMLDivElement>(null); const progress = useScrollProgress(trackRef); const count = PROTECTION_STAGES.length; const [manualStage, setManualStage] = useState<number | null>(null); const scrollActive = Math.min(count - 1, Math.floor(progress * count)); const active = manualStage ?? scrollActive;
-	return <section id="technology" className="relative scroll-mt-24 py-28 sm:py-36 lg:py-40"><div className="site-container"><Reveal><SectionHeading eyebrow="MULTI-TIER SECURITY ARCHITECTURE" title={<>Six Protection Layers.<br />One Registered Artifact.</>} body="Identity, watermarking, AI Shield, integrity, registry provenance and rights declarations form a clear protection workflow. Public blockchain anchoring and rights enforcement are in development." /></Reveal></div><div ref={trackRef} className="relative mt-16 hidden lg:block" style={{ minHeight: `${count * 75 + 40}vh` }}><div className="sticky top-20 flex min-h-[80vh] items-center"><div className="site-container grid grid-cols-[0.9fr_1.1fr] items-center gap-20"><StageArtwork active={active} id="layers-desktop" /><div><StageList active={active} onSelect={setManualStage} /><div className="mt-8 h-1 w-full overflow-hidden rounded-full bg-white/[0.08]"><div className="h-full bg-gradient-to-r from-ice-400 to-blue-600 transition-all duration-500 ease-premium" style={{ width: `${((active + 1) / count) * 100}%` }} /></div></div></div></div></div><div className="site-container mt-16 lg:hidden"><Reveal><StageArtwork active={active} id="layers-mobile" /></Reveal><div className="mt-16"><StageList active={active} onSelect={setManualStage} /></div></div></section>;
+	return <section id="technology" className="relative scroll-mt-24 overflow-x-clip py-28 sm:py-36 lg:py-40"><div className="site-container"><Reveal><SectionHeading eyebrow="MULTI-TIER SECURITY ARCHITECTURE" title={<>Six Protection Layers.<br />One Registered Artifact.</>} body="Identity, watermarking, AI Shield, integrity, registry provenance and rights declarations form a clear protection workflow. Public blockchain anchoring and rights enforcement are in development." /></Reveal></div><div ref={trackRef} className="relative mt-16 hidden lg:block" style={{ minHeight: `${count * 75 + 40}vh` }}><div className="sticky top-20 flex min-h-[80vh] items-center"><div className="site-container grid grid-cols-[0.9fr_1.1fr] items-center gap-20"><StageArtwork active={active} id="layers-desktop" /><div><StageList active={active} onSelect={setManualStage} /><div className="mt-8 h-1 w-full overflow-hidden rounded-full bg-white/[0.08]"><div className="h-full bg-gradient-to-r from-ice-400 to-blue-600 transition-all duration-500 ease-premium" style={{ width: `${((active + 1) / count) * 100}%` }} /></div></div></div></div></div><div className="site-container mt-16 lg:hidden"><Reveal><StageArtwork active={active} id="layers-mobile" /></Reveal><div className="mt-16"><StageList active={active} onSelect={setManualStage} /></div></div></section>;
 }

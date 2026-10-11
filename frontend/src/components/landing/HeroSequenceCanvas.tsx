@@ -65,10 +65,13 @@ export default function HeroSequenceCanvas() {
 			const { width, height, dpr } = size;
 			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 			ctx.clearRect(0, 0, width, height);
-			// "contain" fit — the full 16:9 frame is always visible, never cropped.
-			const scale = Math.min(width / image.naturalWidth, height / image.naturalHeight);
+			const isMobile = window.matchMedia("(max-width: 639px)").matches;
+			const scale = isMobile
+				? Math.max(width / image.naturalWidth, height / image.naturalHeight)
+				: Math.min(width / image.naturalWidth, height / image.naturalHeight);
 			const drawWidth = image.naturalWidth * scale;
 			const drawHeight = image.naturalHeight * scale;
+			// Center the mobile cover crop while retaining desktop's full-frame contain fit.
 			ctx.drawImage(image, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
 		};
 

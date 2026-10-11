@@ -108,6 +108,7 @@ async function requestApi<T>(path: string, options: RequestInit = {}): Promise<T
 export default function Protect() {
 	const { authReady, isAuthenticated } = useAuth();
 	const [loginModalOpen, setLoginModalOpen] = useState(false);
+	const [mobileNavOpen, setMobileNavOpen] = useState(false);
 	const pendingProtection = useRef(false);
 	const [file, setFile] = useState<File | null>(null);
 	const [watermark, setWatermark] = useState("ArtShield");
@@ -196,6 +197,15 @@ export default function Protect() {
 	useEffect(() => {
 		setVerificationReferences(loadVerificationReferences());
 	}, []);
+
+	useEffect(() => {
+		if (!mobileNavOpen) return;
+		const closeOnEscape = (event: KeyboardEvent) => {
+			if (event.key === "Escape") setMobileNavOpen(false);
+		};
+		window.addEventListener("keydown", closeOnEscape);
+		return () => window.removeEventListener("keydown", closeOnEscape);
+	}, [mobileNavOpen]);
 
 	// Pipeline sequential progression timer when protection is running
 	useEffect(() => {
@@ -655,6 +665,35 @@ export default function Protect() {
 							</svg>
 							<span>{audio.enabled ? "SOUND ON" : "MUTED"}</span>
 						</button>
+						<button
+							type="button"
+							className="pc-nav__menu-toggle"
+							aria-expanded={mobileNavOpen}
+							aria-controls="protect-mobile-menu"
+							aria-label={mobileNavOpen ? "Close navigation menu" : "Open navigation menu"}
+							onClick={() => setMobileNavOpen((open) => !open)}
+						>
+							<svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+								{mobileNavOpen ? (
+									<path d="m5 5 10 10M15 5 5 15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+								) : (
+									<path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+								)}
+							</svg>
+						</button>
+					</div>
+					<div id="protect-mobile-menu" className="pc-nav__mobile-menu" hidden={!mobileNavOpen}>
+						<Link to="/" className="pc-nav__mobile-link" onClick={() => setMobileNavOpen(false)}>
+							Home
+						</Link>
+						<Link
+							to="/protect"
+							className="pc-nav__mobile-link pc-nav__mobile-link--active"
+							aria-current="page"
+							onClick={() => setMobileNavOpen(false)}
+						>
+							Protection Suite
+						</Link>
 					</div>
 				</nav>
 			</header>

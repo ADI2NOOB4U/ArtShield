@@ -4,13 +4,19 @@
 
 @layer base {
 	html {
+		width: 100%;
 		-webkit-font-smoothing: antialiased;
 		text-rendering: optimizeLegibility;
 		scroll-behavior: smooth;
 	}
 	body {
 		@apply bg-ink-950 font-sans text-silver-100;
-		min-width: 320px;
+		width: 100%;
+		min-height: 100dvh;
+	}
+	#root {
+		width: 100%;
+		min-height: 100dvh;
 	}
 	::selection {
 		background: rgba(76, 200, 244, 0.22);
@@ -26,6 +32,36 @@
 @layer components {
 	.site-container {
 		@apply mx-auto w-full max-w-site px-5 sm:px-8 lg:px-12;
+		padding-left: max(1.25rem, env(safe-area-inset-left));
+		padding-right: max(1.25rem, env(safe-area-inset-right));
+	}
+	.site-header-safe-area {
+		padding-top: env(safe-area-inset-top);
+	}
+	.mobile-menu-safe-area {
+		top: calc(4rem + env(safe-area-inset-top));
+		overflow-y: auto;
+		overscroll-behavior: contain;
+	}
+	.mobile-menu-safe-area > div {
+		padding-bottom: max(2rem, env(safe-area-inset-bottom));
+	}
+	@media (min-width: 640px) {
+		.site-container {
+			padding-left: max(2rem, env(safe-area-inset-left));
+			padding-right: max(2rem, env(safe-area-inset-right));
+		}
+	}
+	@media (min-width: 1024px) {
+		.site-container {
+			padding-left: max(3rem, env(safe-area-inset-left));
+			padding-right: max(3rem, env(safe-area-inset-right));
+		}
+	}
+	@media (min-width: 640px) {
+		.mobile-menu-safe-area {
+			top: calc(5rem + env(safe-area-inset-top));
+		}
 	}
 	.hero-vault {
 		position: relative;
@@ -161,6 +197,7 @@
 	}
 	.hero-secondary-action {
 		display: inline-flex;
+		min-height: 44px;
 		align-items: center;
 		gap: 0.7rem;
 		font-family: "JetBrains Mono", "SFMono-Regular", ui-monospace, monospace;
@@ -199,6 +236,31 @@
 	}
 	.hero-vault .reveal:has(.hero-readout) {
 		display: none;
+	}
+	@media (max-width: 639px) {
+		.hero-statement {
+			font-size: clamp(2.1rem, 10vw, 3.4rem);
+		}
+		.hero-vault__corner {
+			width: 8rem;
+			height: 8rem;
+		}
+		.hero-vault__corner--tl {
+			top: 0.75rem;
+			left: 0.75rem;
+		}
+		.hero-vault__corner--tr {
+			top: 0.75rem;
+			right: 0.75rem;
+		}
+		.hero-vault__corner--bl {
+			bottom: 0.75rem;
+			left: 0.75rem;
+		}
+		.hero-vault__corner--br {
+			bottom: 0.75rem;
+			right: 0.75rem;
+		}
 	}
 	.landing-content :is(h1, h2, h3) {
 		color: #f5f6f7;
@@ -271,4 +333,3 @@
 		}
 	}
 }
-

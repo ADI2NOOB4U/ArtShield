@@ -62,7 +62,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
 				<button
 					type="button"
 					onClick={onClose}
-					className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-silver-400 hover:text-white hover:border-white/20 transition-colors"
+					className="absolute right-5 top-5 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 text-silver-400 hover:text-white hover:border-white/20 transition-colors"
 					aria-label="Close modal"
 				>
 					<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -146,7 +146,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
 							value={name}
 							onChange={(e) => setName(e.target.value)}
 							placeholder="e.g. Satoshi Nakamoto"
-							className="rounded-lg border border-white/10 bg-black/40 px-3.5 py-2 font-sans text-xs text-silver-100 placeholder:text-silver-600 focus:border-ice-400 focus:outline-none focus:ring-1 focus:ring-ice-400"
+							className="min-h-11 rounded-lg border border-white/10 bg-black/40 px-3.5 py-2 font-sans text-xs text-silver-100 placeholder:text-silver-600 focus:border-ice-400 focus:outline-none focus:ring-1 focus:ring-ice-400"
 						/>
 					</div>
 
@@ -162,7 +162,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
 							value={username}
 							onChange={(e) => setUsername(e.target.value)}
 							placeholder="Configured ArtShield username"
-							className="rounded-lg border border-white/10 bg-black/40 px-3.5 py-2 font-sans text-xs text-silver-100 placeholder:text-silver-600 focus:border-ice-400 focus:outline-none focus:ring-1 focus:ring-ice-400"
+							className="min-h-11 rounded-lg border border-white/10 bg-black/40 px-3.5 py-2 font-sans text-xs text-silver-100 placeholder:text-silver-600 focus:border-ice-400 focus:outline-none focus:ring-1 focus:ring-ice-400"
 						/>
 					</div>
 
@@ -178,7 +178,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}
 							placeholder="Server-issued password"
-							className="rounded-lg border border-white/10 bg-black/40 px-3.5 py-2 font-sans text-xs text-silver-100 placeholder:text-silver-600 focus:border-ice-400 focus:outline-none focus:ring-1 focus:ring-ice-400"
+							className="min-h-11 rounded-lg border border-white/10 bg-black/40 px-3.5 py-2 font-sans text-xs text-silver-100 placeholder:text-silver-600 focus:border-ice-400 focus:outline-none focus:ring-1 focus:ring-ice-400"
 						/>
 					</div>
 
@@ -190,7 +190,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
 							<button
 								type="button"
 								onClick={() => setRole("creator")}
-								className={`rounded-lg border py-2 text-center font-mono text-[11px] transition-all ${
+								className={`min-h-11 rounded-lg border py-2 text-center font-mono text-[11px] transition-all ${
 									role === "creator"
 										? "border-ice-400 bg-ice-400/15 text-ice-300"
 										: "border-white/10 bg-white/[0.02] text-silver-400 hover:text-white"
@@ -201,7 +201,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
 							<button
 								type="button"
 								onClick={() => setRole("studio")}
-								className={`rounded-lg border py-2 text-center font-mono text-[11px] transition-all ${
+								className={`min-h-11 rounded-lg border py-2 text-center font-mono text-[11px] transition-all ${
 									role === "studio"
 										? "border-ice-400 bg-ice-400/15 text-ice-300"
 										: "border-white/10 bg-white/[0.02] text-silver-400 hover:text-white"
@@ -230,4 +230,3 @@ export default function LoginModal({ isOpen, onClose, onSuccess }: LoginModalPro
 		</div>
 	);
 }
-
