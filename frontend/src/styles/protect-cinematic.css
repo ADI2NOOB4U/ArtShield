@@ -646,6 +646,7 @@
 	font-size: 0.72rem;
 	color: var(--pc-accent-cyan);
 	cursor: pointer;
+	min-height: 44px;
 	padding: 0.25rem 0.5rem;
 	transition: opacity var(--pc-transition-fast);
 }
@@ -1929,12 +1930,16 @@
 }
 
 .pc-status-msg {
+	min-width: 0;
+	max-width: 100%;
 	font-family: var(--pc-font-mono);
 	font-size: 0.78rem;
 	padding: 0.6rem 0.9rem;
 	border-radius: var(--pc-radius-sm);
 	background: rgba(0, 0, 0, 0.35);
 	color: var(--pc-text-secondary);
+	overflow-wrap: anywhere;
+	box-sizing: border-box;
 }
 
 /* Exhibition guide: intentionally a compact layer over the real workspace, never a simulated result. */
@@ -2597,6 +2602,26 @@
 	.pc-cert-panel {
 		padding: clamp(1rem, 5vw, 1.5rem);
 		border-radius: var(--pc-radius-lg);
+	}
+	.pc-dropzone,
+	.pc-dropzone--verify {
+		min-height: 220px;
+		padding: 1.5rem 1rem;
+	}
+	.pc-selected-file__preview-wrap,
+	.pc-selected-file__img,
+	.pc-preview-card__media,
+	.pc-preview-card__img {
+		max-height: 200px;
+	}
+	.pc-sentinel__center {
+		min-height: 220px;
+	}
+	.pc-sentinel__art {
+		height: 220px;
+	}
+	.pc-platform-card {
+		min-height: 0;
 	}
 	.pc-pipeline {
 		gap: 1.5rem;
